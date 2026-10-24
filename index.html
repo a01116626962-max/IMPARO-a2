@@ -1,0 +1,2878 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<meta name="theme-color" content="#2d7a68" />
+<title>Imparo Ingester — إدارة ذكية للأفعال</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%232d7a68'/><text x='50' y='68' font-size='60' text-anchor='middle' fill='white' font-family='Georgia'>I</text></svg>">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+[hidden] { display: none !important; }
+:root {
+  --bg: #f7f5f0; --surface: #fff; --surface-2: #fbfaf7;
+  --primary: #2d7a68; --primary-dark: #1f5a4c; --primary-soft: #e4f1ed;
+  --success: #4caf7d; --success-soft: #e6f5ee;
+  --warn: #eba827; --warn-soft: #fdf3e0;
+  --danger: #e76f51; --danger-soft: #fbe8e2;
+  --info: #4a6ee0; --info-soft: #e0ecff;
+  --purple: #7c4dcc; --purple-soft: #f5f0ff;
+  --text: #23302c; --text-soft: #6b7a76; --border: #ece8e1;
+  --shadow-sm: 0 1px 3px rgba(30,45,40,.06);
+  --shadow-lg: 0 10px 30px rgba(30,45,40,.14);
+  --radius-sm: 12px; --radius: 16px; --radius-lg: 22px;
+}
+html, body {
+  height: 100%; background: var(--bg); color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Kufi Arabic", "Tahoma", sans-serif;
+  font-size: 15px; line-height: 1.5;
+  -webkit-font-smoothing: antialiased; overscroll-behavior-y: none;
+}
+body { min-height: 100vh; }
+.app { max-width: 720px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; background: var(--bg); }
+
+.app-header {
+  position: sticky; top: 0; z-index: 20;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px; padding: 12px 14px;
+  background: rgba(247,245,240,.92);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+}
+.brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.brand-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--primary); box-shadow: 0 0 0 4px var(--primary-soft); flex-shrink: 0; }
+.brand h1 { font-size: 16px; font-weight: 800; color: var(--primary-dark); white-space: nowrap; }
+.brand .subtitle { font-size: 10px; font-weight: 700; color: var(--text-soft); display: block; margin-top: -2px; letter-spacing: .4px; }
+.header-actions { display: flex; gap: 6px; flex-shrink: 0; }
+
+.btn-prompt {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 8px 11px;
+  border: none; border-radius: 999px;
+  font-family: inherit; font-size: 12px; font-weight: 800;
+  cursor: pointer; white-space: nowrap;
+  transition: transform .12s ease, background .15s ease, box-shadow .15s ease;
+}
+.btn-prompt:active { transform: scale(.96); }
+.btn-prompt.sentences { background: var(--primary); color: #fff; box-shadow: 0 4px 10px rgba(45,122,104,.22); }
+.btn-prompt.verbs { background: var(--purple); color: #fff; box-shadow: 0 4px 10px rgba(124,77,204,.22); }
+.btn-prompt.drive { background: var(--info); color: #fff; box-shadow: 0 4px 10px rgba(74,110,224,.22); }
+.btn-prompt.copied { background: var(--success) !important; box-shadow: 0 4px 10px rgba(76,175,125,.22); }
+
+.app-main { flex: 1; padding: 16px; padding-bottom: 40px; display: flex; flex-direction: column; gap: 14px; }
+
+.tab-nav {
+  display: flex; gap: 4px;
+  background: var(--surface); padding: 5px;
+  border-radius: var(--radius); border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+}
+.tab-btn {
+  flex: 1; padding: 11px 14px;
+  border: none; background: transparent;
+  font-family: inherit; font-size: 13.5px; font-weight: 800;
+  color: var(--text-soft); cursor: pointer;
+  border-radius: 11px;
+  transition: background .15s ease, color .15s ease;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  min-width: 0; white-space: nowrap;
+}
+.tab-btn:hover { background: var(--surface-2); }
+.tab-btn.active { background: var(--primary); color: #fff; box-shadow: 0 3px 10px rgba(45,122,104,.25); }
+.tab-btn[data-tab="drive"].active { background: var(--info); box-shadow: 0 3px 10px rgba(74,110,224,.25); }
+
+.status-bar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 14px; background: var(--surface);
+  border-radius: var(--radius-sm); border: 1px solid var(--border);
+  font-size: 13px; color: var(--text-soft); box-shadow: var(--shadow-sm);
+}
+.sync-dot { width: 9px; height: 9px; border-radius: 50%; background: #b9c7c3; transition: background .2s ease; flex-shrink: 0; }
+.sync-dot.online { background: var(--success); box-shadow: 0 0 0 3px rgba(76,175,125,.15); }
+.sync-dot.syncing { background: var(--warn); box-shadow: 0 0 0 3px rgba(235,168,39,.15); animation: pulse 1s infinite; }
+.sync-dot.offline { background: var(--danger); }
+@keyframes pulse { 0%,100%{transform:scale(1);} 50%{transform:scale(1.2);} }
+
+.card { background: var(--surface); border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow-sm); border: 1px solid var(--border); }
+.section-title { font-size: 14px; font-weight: 800; color: var(--text); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+
+.instructions { background: linear-gradient(135deg, #fff, #f1faf6); border-color: #d5ebe4; }
+.instructions h3 { font-size: 13.5px; color: var(--primary-dark); margin-bottom: 10px; font-weight: 800; }
+.instructions ol, .instructions ul { padding-inline-start: 20px; color: var(--text-soft); font-size: 13.5px; line-height: 1.9; }
+.instructions li::marker { color: var(--primary); font-weight: 800; }
+
+.json-input {
+  width: 100%; min-height: 200px; padding: 14px;
+  background: var(--surface-2); border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-family: "Consolas", "Monaco", "Courier New", monospace;
+  font-size: 13px; line-height: 1.55; color: var(--text);
+  outline: none; resize: vertical; direction: ltr; text-align: left;
+  transition: border-color .15s ease, background .15s ease;
+}
+.json-input:focus { border-color: var(--primary); background: #fff; }
+.json-input.valid { border-color: var(--success); }
+.json-input.invalid { border-color: var(--danger); }
+
+.input-meta {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px; margin-top: 8px; margin-bottom: 12px;
+  font-size: 12.5px; color: var(--text-soft); min-height: 18px;
+}
+.input-status.ok { color: var(--success); font-weight: 700; }
+.input-status.err { color: var(--danger); font-weight: 700; }
+.input-meta-actions { display: flex; gap: 6px; }
+
+.mini-btn {
+  border: 1px solid var(--border); background: var(--surface-2);
+  color: var(--text-soft); padding: 5px 10px; border-radius: 8px;
+  font-family: inherit; font-size: 11.5px; font-weight: 700;
+  cursor: pointer; transition: background .15s ease;
+}
+.mini-btn:hover { background: var(--border); }
+
+.btn {
+  border: none; border-radius: var(--radius);
+  padding: 14px 18px; font-family: inherit; font-size: 15px; font-weight: 800;
+  cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%;
+  transition: transform .12s ease, background .2s ease, box-shadow .2s ease;
+}
+.btn:active:not(:disabled) { transform: scale(.98); }
+.btn:disabled { opacity: .55; cursor: not-allowed; }
+.btn-primary { background: var(--primary); color: #fff; box-shadow: 0 6px 16px rgba(45,122,104,.28); }
+.btn-primary:hover:not(:disabled) { background: var(--primary-dark); }
+.btn-primary:disabled { background: #b9c7c3; box-shadow: none; }
+.btn-ghost { background: var(--surface-2); color: var(--text); box-shadow: none; border: 1px solid var(--border); }
+.btn-ghost:hover:not(:disabled) { background: var(--border); }
+.btn-purple { background: var(--purple); color: #fff; box-shadow: 0 6px 16px rgba(124,77,204,.28); }
+.btn-purple:hover:not(:disabled) { background: #6938b8; }
+.btn-purple:disabled { background: #b9c7c3; box-shadow: none; }
+.btn-info { background: var(--info); color: #fff; box-shadow: 0 6px 16px rgba(74,110,224,.28); }
+.btn-info:hover:not(:disabled) { background: #3a5bc7; }
+.btn-info:disabled { background: #b9c7c3; box-shadow: none; }
+
+.btn.loading::after {
+  content: ''; width: 14px; height: 14px;
+  border: 2px solid rgba(255,255,255,.4); border-top-color: #fff;
+  border-radius: 50%; animation: spin .7s linear infinite;
+  margin-inline-start: 4px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.form-label { display: block; font-size: 12px; font-weight: 700; color: var(--text-soft); margin-bottom: 4px; }
+.form-input {
+  width: 100%; padding: 10px 12px;
+  background: var(--surface-2); border: 1.5px solid var(--border);
+  border-radius: 10px;
+  font-family: inherit; font-size: 14px; color: var(--text);
+  outline: none; margin-bottom: 10px;
+  transition: border-color .15s ease, background .15s ease;
+}
+.form-input:focus { border-color: var(--primary); background: #fff; }
+.form-input[dir="ltr"] { direction: ltr; text-align: left; font-family: "Georgia", serif; }
+.form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+.checkbox-label {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; background: var(--surface-2);
+  border-radius: 10px; cursor: pointer;
+  font-size: 13.5px; font-weight: 600; color: var(--text);
+  margin-bottom: 10px;
+}
+.checkbox-label input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--primary); cursor: pointer; }
+
+.reflexive-block { background: #f5f0ff; padding: 12px; border-radius: 10px; margin-bottom: 10px; border: 1px solid #e0d5f5; }
+.reflexive-block .form-label { color: #7c4dcc; }
+.reflexive-block h4 { font-size: 13px; margin: 0 0 10px; color: #7c4dcc; font-weight: 800; }
+
+.verb-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 12px 14px; background: var(--surface-2);
+  border-radius: 10px; border: 1px solid var(--border);
+  margin-bottom: 8px;
+}
+.verb-item:last-child { margin-bottom: 0; }
+.verb-item-body { flex: 1; min-width: 0; }
+.verb-item-inf {
+  font-family: "Georgia", serif; font-weight: 800; font-size: 16px;
+  color: var(--primary-dark); direction: ltr; text-align: left;
+  margin-bottom: 2px;
+}
+.verb-item-meaning { font-size: 13px; color: var(--text); margin-bottom: 6px; }
+.verb-item-meta { display: flex; flex-wrap: wrap; gap: 4px; }
+.verb-badge {
+  font-size: 10.5px; font-weight: 700;
+  padding: 2px 8px; border-radius: 5px;
+  background: var(--surface); border: 1px solid var(--border);
+  color: var(--text-soft);
+}
+.verb-badge.reflexive { background: #ede5ff; color: var(--purple); border-color: transparent; }
+.verb-badge.conj { background: var(--info-soft); color: var(--info); border-color: transparent; }
+.verb-item-actions { display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; }
+.verb-item-actions button {
+  border: 1px solid var(--border); background: var(--surface);
+  padding: 6px 10px; border-radius: 8px;
+  font-family: inherit; font-size: 11.5px; font-weight: 700;
+  cursor: pointer; transition: background .15s ease;
+}
+.verb-item-actions button:hover { background: var(--border); }
+.verb-item-actions .danger { color: var(--danger); }
+
+.results-card { background: linear-gradient(135deg, #fff, #f1faf6); border-color: #c7e8db; }
+.results-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 12px; }
+.result-item { padding: 12px; background: var(--surface); border-radius: var(--radius-sm); border: 1px solid var(--border); text-align: center; }
+.result-item .v { font-size: 22px; font-weight: 800; color: var(--primary-dark); line-height: 1.2; display: block; }
+.result-item .l { font-size: 11.5px; color: var(--text-soft); margin-top: 2px; }
+.result-item.success .v { color: var(--success); }
+.result-item.added .v { color: var(--info); }
+.result-item.skipped .v { color: var(--warn); }
+.result-item.error .v { color: var(--danger); }
+
+.history-list { display: flex; flex-direction: column; gap: 8px; }
+.history-item { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; background: var(--surface-2); border-radius: var(--radius-sm); border: 1px solid var(--border); font-size: 12.5px; }
+.history-item-icon { width: 32px; height: 32px; border-radius: 50%; background: var(--success-soft); color: var(--success); display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
+.history-item-content { flex: 1; min-width: 0; }
+.history-item-title { font-weight: 700; color: var(--text); margin-bottom: 2px; }
+.history-item-time { font-size: 10.5px; color: var(--text-soft); }
+
+.empty-state { text-align: center; color: var(--text-soft); font-size: 13px; padding: 32px 12px; }
+
+.toast {
+  position: fixed; bottom: 24px; left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: #23302c; color: #fff;
+  padding: 11px 20px; border-radius: 999px;
+  font-size: 13.5px; font-weight: 700; z-index: 200;
+  opacity: 0; pointer-events: none;
+  transition: opacity .25s ease, transform .25s ease;
+  max-width: 88vw; text-align: center;
+  box-shadow: var(--shadow-lg);
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast.ok { background: var(--success); }
+.toast.err { background: var(--danger); }
+.toast.warn { background: var(--warn); color: #3a2c05; }
+
+.prompt-overlay, .preview-overlay, .verb-prompt-overlay {
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(20,30,28,.55); backdrop-filter: blur(4px);
+  display: none; align-items: center; justify-content: center;
+  padding: 12px;
+}
+.prompt-overlay.is-open, .preview-overlay.is-open, .verb-prompt-overlay.is-open { display: flex; }
+@keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+.prompt-modal, .verb-prompt-modal {
+  background: var(--surface); border-radius: var(--radius-lg);
+  width: 100%; max-width: 620px; max-height: 88vh;
+  display: flex; flex-direction: column;
+  box-shadow: var(--shadow-lg); animation: slideUp .25s ease;
+}
+.prompt-modal-header, .verb-prompt-modal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 18px; border-bottom: 1px solid var(--border);
+}
+.prompt-modal-header h3, .verb-prompt-modal-header h3 {
+  font-size: 15px; font-weight: 800;
+  display: flex; align-items: center; gap: 8px;
+}
+.prompt-modal-header h3 { color: var(--primary-dark); }
+.verb-prompt-modal-header h3 { color: var(--purple); }
+.prompt-modal-body, .verb-prompt-modal-body { flex: 1; overflow-y: auto; padding: 16px 18px; }
+.prompt-content {
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 14px;
+  font-family: "Consolas", "Monaco", "Courier New", monospace;
+  font-size: 12px; line-height: 1.65;
+  white-space: pre-wrap; color: var(--text); direction: rtl;
+}
+.prompt-modal-footer, .verb-prompt-modal-footer {
+  padding: 12px 18px; border-top: 1px solid var(--border);
+  display: flex; gap: 8px;
+}
+.prompt-modal-footer .btn, .verb-prompt-modal-footer .btn {
+  flex: 1; padding: 11px 14px; font-size: 13.5px;
+}
+
+.tense-options {
+  background: var(--purple-soft);
+  border: 1px solid #e0d5f5;
+  border-radius: var(--radius-sm);
+  padding: 14px;
+  margin-bottom: 14px;
+}
+.tense-options-title {
+  font-size: 13px; font-weight: 800;
+  color: var(--purple); margin-bottom: 10px;
+  display: flex; align-items: center; gap: 6px;
+}
+.tense-checkbox {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 10px; cursor: pointer;
+  margin-bottom: 8px;
+  transition: border-color .15s ease, background .15s ease;
+}
+.tense-checkbox:last-child { margin-bottom: 0; }
+.tense-checkbox:hover { border-color: var(--purple); }
+.tense-checkbox.checked { border-color: var(--purple); background: #faf6ff; }
+.tense-checkbox.locked { background: #f5f5f5; cursor: not-allowed; opacity: .85; }
+.tense-checkbox input[type="checkbox"] {
+  width: 18px; height: 18px; margin-top: 2px;
+  accent-color: var(--purple); cursor: pointer; flex-shrink: 0;
+}
+.tense-checkbox.locked input { cursor: not-allowed; }
+.tense-checkbox-content { flex: 1; min-width: 0; }
+.tense-checkbox-label {
+  font-size: 13.5px; font-weight: 700; color: var(--text);
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+}
+.tense-checkbox-desc {
+  font-size: 11.5px; color: var(--text-soft);
+  margin-top: 3px; line-height: 1.5;
+}
+.tense-checkbox .lock-badge {
+  font-size: 9.5px; padding: 1px 6px;
+  background: var(--success-soft); color: var(--success);
+  border-radius: 4px; font-weight: 800; letter-spacing: .2px;
+}
+.verb-prompt-preview-label {
+  font-size: 12.5px; font-weight: 800;
+  color: var(--purple); margin-bottom: 8px;
+  display: flex; align-items: center; gap: 6px;
+}
+.verb-prompt-preview {
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 12px;
+  font-family: "Consolas", "Monaco", "Courier New", monospace;
+  font-size: 11.5px; line-height: 1.6;
+  white-space: pre-wrap; color: var(--text);
+  direction: rtl; max-height: 220px; overflow-y: auto;
+}
+
+.preview-modal {
+  background: var(--surface); border-radius: var(--radius-lg);
+  width: 100%; max-width: 760px; max-height: 92vh;
+  display: flex; flex-direction: column;
+  box-shadow: var(--shadow-lg); animation: slideUp .25s ease;
+  overflow: hidden;
+}
+.preview-modal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 18px; border-bottom: 1px solid var(--border);
+}
+.preview-modal-header h3 { font-size: 15px; font-weight: 800; color: var(--primary-dark); display: flex; align-items: center; gap: 8px; }
+.user-badge { font-size: 10px; font-weight: 700; color: var(--text-soft); background: var(--surface-2); padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border); }
+.preview-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 12px 16px; background: var(--surface-2); border-bottom: 1px solid var(--border); }
+.preview-stat { text-align: center; padding: 8px 4px; border-radius: 10px; background: var(--surface); border: 1px solid var(--border); }
+.preview-stat .stat-value { font-size: 20px; font-weight: 800; color: var(--primary-dark); display: block; line-height: 1.2; }
+.preview-stat .stat-label { font-size: 10.5px; color: var(--text-soft); margin-top: 2px; font-weight: 700; }
+.preview-stat.success .stat-value { color: var(--success); }
+.preview-stat.added .stat-value { color: var(--info); }
+.preview-stat.skipped .stat-value { color: var(--warn); }
+.preview-stat.collision { border-color: var(--warn); background: var(--warn-soft); }
+.preview-stat.collision .stat-value { color: #a76b0f; }
+.preview-tabs { display: flex; gap: 4px; padding: 10px 12px 0; border-bottom: 1px solid var(--border); background: var(--surface); overflow-x: auto; flex-shrink: 0; }
+.preview-tab-btn {
+  border: none; background: transparent;
+  padding: 9px 14px; font-family: inherit;
+  font-size: 12.5px; font-weight: 700; color: var(--text-soft);
+  cursor: pointer; border-radius: 8px 8px 0 0; white-space: nowrap;
+  transition: background .15s ease, color .15s ease;
+  border-bottom: 2px solid transparent;
+  display: flex; align-items: center; gap: 6px;
+}
+.preview-tab-btn.active { color: var(--primary-dark); border-bottom-color: var(--primary); background: var(--surface-2); }
+.preview-tab-btn .tab-count { background: var(--primary-soft); color: var(--primary-dark); padding: 1px 7px; border-radius: 999px; font-size: 10.5px; font-weight: 800; }
+.preview-tab-btn.active .tab-count { background: var(--primary); color: #fff; }
+.preview-modal-body { flex: 1; overflow-y: auto; padding: 12px 16px; min-height: 180px; max-height: 55vh; }
+.preview-tab-content { display: flex; flex-direction: column; gap: 8px; }
+.preview-list-item { background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; display: flex; gap: 10px; }
+.preview-item-num { width: 26px; height: 26px; border-radius: 50%; background: var(--primary-soft); color: var(--primary-dark); font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.preview-item-body { flex: 1; min-width: 0; }
+.preview-item-it { direction: ltr; text-align: left; font-family: "Georgia", serif; font-size: 14px; font-weight: 700; margin-bottom: 2px; color: var(--text); word-break: break-word; }
+.preview-item-ar { font-size: 12.5px; color: var(--text-soft); }
+.preview-item-ar.empty-ar { opacity: .55; font-style: italic; }
+.preview-item-word-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 4px; }
+.preview-item-word { font-family: "Georgia", serif; font-weight: 700; font-size: 14.5px; color: var(--text); word-break: break-word; }
+.preview-item-lemma { font-family: "Georgia", serif; font-style: italic; font-size: 11.5px; color: var(--text-soft); margin-bottom: 4px; }
+.preview-item-meaning { font-size: 13px; color: var(--text); margin-bottom: 4px; line-height: 1.5; word-break: break-word; }
+.preview-item-summary { font-size: 11.5px; color: var(--text-soft); line-height: 1.6; margin-top: 6px; padding: 7px 9px; background: var(--surface); border-radius: 6px; border: 1px solid var(--border); white-space: pre-wrap; word-break: break-word; }
+.preview-badge { font-size: 10px; padding: 2px 7px; border-radius: 5px; font-weight: 800; letter-spacing: .2px; }
+.preview-badge.new { background: var(--success-soft); color: var(--success); }
+.preview-badge.added { background: var(--info-soft); color: var(--info); }
+.preview-badge.skipped { background: var(--warn-soft); color: var(--warn); }
+.preview-badge.type-verb { background: #e0ecff; color: #4a6ee0; }
+.preview-badge.type-preposition { background: #ffe8d4; color: #e08a3a; }
+.preview-badge.type-article { background: #d4f0e4; color: #3a9a6a; }
+.preview-badge.type-word { background: var(--surface); color: var(--text-soft); border: 1px solid var(--border); }
+.preview-modal-footer { padding: 12px 16px; border-top: 1px solid var(--border); display: flex; gap: 8px; background: var(--surface); flex-shrink: 0; }
+.preview-modal-footer .btn { padding: 12px 16px; font-size: 14px; }
+.preview-modal-footer .btn-primary { flex: 2; }
+.preview-modal-footer .btn-info { flex: 2; }
+.preview-modal-footer .btn-ghost { flex: 1; }
+
+.drive-action-btn {
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  color: var(--text-soft);
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+}
+.drive-action-btn:hover { background: var(--surface-2); border-color: var(--primary); color: var(--primary-dark); }
+.drive-action-btn:active { transform: scale(.96); }
+.drive-action-btn:disabled { opacity: .5; cursor: not-allowed; }
+.drive-action-btn.reactivate { border-color: var(--success); color: var(--success); background: var(--success-soft); }
+.drive-action-btn.reactivate:hover { background: var(--success); color: #fff; }
+.drive-action-btn.bypass:hover { border-color: var(--warn); color: #a76b0f; background: var(--warn-soft); }
+.drive-action-btn.replace { border-color: var(--info); color: var(--info); background: var(--info-soft); }
+.drive-action-btn.replace:hover:not(:disabled) { background: var(--info); color: #fff; }
+.drive-action-btn.undo { border-color: var(--danger); color: var(--danger); background: var(--danger-soft); }
+.drive-action-btn.undo:hover { background: var(--danger); color: #fff; }
+.drive-action-btn.edit { border-color: var(--primary); color: var(--primary-dark); background: var(--primary-soft); }
+.drive-action-btn.edit:hover { background: var(--primary); color: #fff; }
+.drive-action-btn.delete { border-color: var(--danger); color: var(--danger); background: var(--danger-soft); }
+.drive-action-btn.delete:hover { background: var(--danger); color: #fff; }
+.drive-action-btn.save { background: var(--success); color: #fff; border-color: var(--success); }
+.drive-action-btn.save:hover { background: #3a9a6a; color: #fff; }
+.drive-action-btn.cancel { background: var(--surface-2); }
+.drive-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 8px;
+}
+
+.drive-audit-tabs {
+  display: flex;
+  gap: 4px;
+  padding-bottom: 10px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  flex-wrap: nowrap;
+}
+.drive-audit-tab-btn {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-soft);
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+.drive-audit-tab-btn:hover { background: var(--surface-2); }
+.drive-audit-tab-btn.active {
+  background: var(--info);
+  color: #fff;
+  border-color: var(--info);
+}
+.subtab-count {
+  background: var(--surface-2);
+  color: var(--text-soft);
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 800;
+  min-width: 20px;
+  text-align: center;
+}
+.drive-audit-tab-btn.active .subtab-count {
+  background: rgba(255,255,255,.25);
+  color: #fff;
+}
+
+.audit-note {
+  font-size: 12px;
+  color: var(--text-soft);
+  padding: 8px 12px;
+  background: var(--info-soft);
+  border: 1px dashed var(--info);
+  border-radius: 8px;
+  margin-bottom: 10px;
+  line-height: 1.6;
+}
+
+.audit-card {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 10px;
+}
+.audit-card:last-child { margin-bottom: 0; }
+.audit-card.bypassed {
+  opacity: .75;
+  background: var(--surface-2);
+  border-style: dashed;
+}
+.audit-card.skipped-t2 {
+  opacity: .55;
+  background: var(--surface-2);
+  border-style: dashed;
+}
+.audit-card.has-suggestion {
+  border-color: #d4c4a0;
+  background: linear-gradient(135deg, #fff, #fffbf2);
+}
+.audit-card.pending-change {
+  border-color: var(--success);
+  background: linear-gradient(135deg, #fff, #f0f9f4);
+  box-shadow: 0 4px 12px rgba(76,175,125,.12);
+}
+.audit-card.duplicate-db {
+  border-color: var(--warn);
+  background: linear-gradient(135deg, #fff, #fff8e6);
+}
+.audit-card.editing {
+  border-color: var(--primary);
+  background: linear-gradient(135deg, #fff, #f1faf6);
+  box-shadow: 0 4px 12px rgba(45,122,104,.12);
+}
+.audit-card-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+.audit-card-num {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  background: var(--info-soft);
+  color: var(--info);
+  font-size: 11px; font-weight: 800;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.audit-badge {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 5px;
+  white-space: nowrap;
+}
+.audit-badge.dup-db { background: var(--warn-soft); color: #a76b0f; }
+.audit-badge.similar { background: var(--info-soft); color: var(--info); }
+.audit-badge.pending { background: var(--success-soft); color: var(--success); }
+.audit-badge.exact { background: var(--danger-soft); color: #a94633; }
+.audit-badge.new-item { background: var(--info-soft); color: var(--info); }
+.audit-badge.editing-badge { background: var(--primary-soft); color: var(--primary-dark); }
+
+.audit-sentence {
+  font-family: "Georgia", serif;
+  font-size: 14.5px;
+  font-weight: 700;
+  direction: ltr;
+  text-align: left;
+  color: var(--text);
+  margin-bottom: 4px;
+  word-break: break-word;
+}
+.audit-arabic {
+  font-size: 13px;
+  color: var(--text-soft);
+  margin-bottom: 6px;
+  word-break: break-word;
+}
+.audit-arabic.empty { font-style: italic; opacity: .6; }
+
+.audit-suggestion {
+  background: var(--info-soft);
+  border: 1px dashed var(--info);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 12px;
+  color: var(--text);
+  margin: 8px 0;
+  line-height: 1.55;
+}
+.audit-suggestion-label {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--info);
+  margin-bottom: 4px;
+}
+.audit-suggestion-text {
+  font-family: "Georgia", serif;
+  direction: ltr;
+  text-align: left;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--text);
+  margin-bottom: 3px;
+  word-break: break-word;
+}
+.audit-suggestion-score {
+  font-size: 10.5px;
+  color: var(--text-soft);
+  font-weight: 700;
+}
+
+.audit-pending-change {
+  background: var(--success-soft);
+  border: 1px dashed var(--success);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 12px;
+  margin: 8px 0;
+}
+.audit-pending-label {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--success);
+  margin-bottom: 4px;
+}
+.audit-pending-it {
+  font-family: "Georgia", serif;
+  direction: ltr;
+  text-align: left;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--text);
+  word-break: break-word;
+}
+
+.audit-stats-mini {
+  font-size: 11px;
+  color: var(--text-soft);
+  font-weight: 600;
+  margin-bottom: 8px;
+  padding: 6px 10px;
+  background: var(--surface-2);
+  border-radius: 6px;
+}
+
+.audit-edit-label {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--text-soft);
+  margin: 8px 0 4px;
+}
+.audit-edit-input {
+  width: 100%;
+  padding: 8px 10px;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--text);
+  outline: none;
+  resize: vertical;
+  transition: border-color .15s ease;
+}
+.audit-edit-input:focus { border-color: var(--primary); }
+.audit-edit-input[dir="ltr"] { font-family: "Georgia", serif; }
+.audit-edit-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+}
+.audit-edit-actions .drive-action-btn { flex: 1; justify-content: center; }
+
+@media (max-width: 480px) {
+  .app-header { padding: 10px 12px; }
+  .brand h1 { font-size: 15px; }
+  .brand .subtitle { font-size: 9px; }
+  .btn-prompt { padding: 7px 9px; font-size: 11px; }
+  .btn-prompt .btn-text-long { display: none; }
+  .results-grid, .preview-summary { grid-template-columns: 1fr 1fr; }
+  .preview-modal { max-height: 96vh; }
+  .preview-modal-body { max-height: 50vh; }
+  .tab-btn { font-size: 11.5px; padding: 9px 7px; gap: 3px; }
+  .form-row-2 { grid-template-columns: 1fr; }
+  .verb-prompt-modal { max-height: 94vh; }
+  .drive-actions { gap: 4px; }
+  .drive-action-btn { font-size: 11px; padding: 5px 8px; }
+  .drive-audit-tab-btn { font-size: 11px; padding: 6px 9px; }
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header class="app-header">
+    <div class="brand">
+      <span class="brand-dot"></span>
+      <div>
+        <h1>Imparo <span class="subtitle">INGESTER</span></h1>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="btn-prompt sentences" id="btnCopyPrompt" title="برومبت الجمل">
+        📋 <span class="btn-text-long">برومبت الجمل</span>
+      </button>
+      <button class="btn-prompt verbs" id="btnCopyVerbPrompt" title="برومبت الأفعال">
+        🔤 <span class="btn-text-long">برومبت الأفعال</span>
+      </button>
+      <button class="btn-prompt drive" id="btnCopyDrivePrompt" title="برومبت ملف Drive">
+        📄 <span class="btn-text-long">ملف Drive</span>
+      </button>
+    </div>
+  </header>
+
+  <main class="app-main">
+    <div class="status-bar">
+      <span class="sync-dot" id="syncDot"></span>
+      <span id="statusText">جارٍ الاتصال بقاعدة البيانات…</span>
+    </div>
+
+    <div class="tab-nav">
+      <button class="tab-btn active" data-tab="json">📥 JSON</button>
+      <button class="tab-btn" data-tab="verbs">🔤 الأفعال</button>
+      <button class="tab-btn" data-tab="drive">🔍 تدقيق Drive</button>
+    </div>
+
+    <div id="tab-json">
+      <div class="card instructions">
+        <h3>🎯 كيف يعمل؟</h3>
+        <ol>
+          <li>اضغط <strong>"برومبت الجمل"</strong> أو <strong>"برومبت الأفعال"</strong> أو <strong>"ملف Drive"</strong> أعلى الصفحة.</li>
+          <li>الصق البرومبت في ChatGPT/Claude مع بياناتك.</li>
+          <li>الصق ناتج JSON في المربع أدناه (لرفع جمل/قاموس جديد).</li>
+          <li><strong>تبويب "🔍 تدقيق Drive"</strong> مخصص للفحص فقط — لا يرفع جمل جديدة، بل يقارن ويصحح.</li>
+        </ol>
+      </div>
+
+      <div class="card">
+        <h3 class="section-title">📥 نص JSON من الذكاء الاصطناعي</h3>
+        <textarea id="jsonInput" class="json-input" placeholder='الصق هنا ناتج JSON…' spellcheck="false"></textarea>
+        <div class="input-meta">
+          <span id="inputStatus" class="input-status">بانتظار النص…</span>
+          <div class="input-meta-actions">
+            <button class="mini-btn" id="btnSample">📋 مثال</button>
+            <button class="mini-btn" id="btnClear">🗑️ مسح</button>
+          </div>
+        </div>
+        <button class="btn btn-primary" id="btnAnalyze" disabled>🔍 تحليل ومعاينة قبل الرفع</button>
+      </div>
+
+      <div class="card results-card" id="resultsCard" hidden>
+        <h3 class="section-title">✅ نتيجة آخر عملية</h3>
+        <div class="results-grid" id="resultsGrid"></div>
+        <details style="margin-top:12px;border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;background:var(--surface);">
+          <summary style="padding:10px 14px;cursor:pointer;font-size:13px;font-weight:700;color:var(--primary-dark);background:var(--surface-2);">عرض التفاصيل</summary>
+          <div style="padding:10px 14px;max-height:300px;overflow-y:auto;font-size:12.5px;" id="resultsDetailsContent"></div>
+        </details>
+      </div>
+
+      <div class="card" id="historyCard" hidden>
+        <h3 class="section-title">📜 سجل آخر العمليات</h3>
+        <div class="history-list" id="historyList"></div>
+      </div>
+    </div>
+
+    <div id="tab-verbs" hidden>
+      <div class="card" style="background: linear-gradient(135deg, #fff, #faf6ff); border-color: #e0d5f5;">
+        <h3 class="section-title" style="color: var(--purple);">🤖 إدخال أفعال من AI</h3>
+        <p style="font-size: 12.5px; color: var(--text-soft); margin-bottom: 10px; line-height: 1.6;">
+          اضغط <strong>"🔤 برومبت الأفعال"</strong> → اختر الأزمنة → انسخ → الصق ناتج AI هنا.
+        </p>
+        <textarea id="verbAiInput" class="json-input" placeholder='الصق هنا ناتج AI للأفعال (JSON)…' style="min-height: 140px;" spellcheck="false"></textarea>
+        <div class="input-meta">
+          <span id="verbAiStatus" class="input-status">بانتظار النص…</span>
+          <div class="input-meta-actions">
+            <button class="mini-btn" id="btnVerbAiClear">🗑️ مسح</button>
+          </div>
+        </div>
+        <button class="btn btn-purple" id="btnAnalyzeVerbAI" disabled>🔍 معاينة ورفع الأفعال</button>
+      </div>
+
+      <div class="card instructions" style="background: linear-gradient(135deg, #fff, #fff8e6); border-color: #f0d8a0;">
+        <h3 style="color: #a76b0f;">💡 أو أضف فعلًا يدويًا</h3>
+      </div>
+
+      <div class="card">
+        <h3 class="section-title" id="verbFormTitle">➕ إضافة فعل جديد</h3>
+        <input type="hidden" id="verbEditId" />
+        <div class="form-row-2">
+          <div><label class="form-label">المصدر *</label><input type="text" id="verbInfinitive" class="form-input" dir="ltr" placeholder="mangiare" /></div>
+          <div><label class="form-label">المعنى *</label><input type="text" id="verbMeaning" class="form-input" placeholder="يأكل" /></div>
+        </div>
+        <h4 style="font-size: 13px; margin: 6px 0 10px; color: var(--primary-dark); font-weight: 800;">📝 المضارع</h4>
+        <div class="form-row-2">
+          <div><label class="form-label">io</label><input type="text" id="verbPresIo" class="form-input" dir="ltr" /></div>
+          <div><label class="form-label">tu</label><input type="text" id="verbPresTu" class="form-input" dir="ltr" /></div>
+          <div><label class="form-label">lui/lei</label><input type="text" id="verbPresLui" class="form-input" dir="ltr" /></div>
+          <div><label class="form-label">noi</label><input type="text" id="verbPresNoi" class="form-input" dir="ltr" /></div>
+          <div><label class="form-label">voi</label><input type="text" id="verbPresVoi" class="form-input" dir="ltr" /></div>
+          <div><label class="form-label">loro</label><input type="text" id="verbPresLoro" class="form-input" dir="ltr" /></div>
+        </div>
+        <label class="checkbox-label" style="margin-top: 8px;">
+          <input type="checkbox" id="verbHasReflexive" />
+          <span>🔄 له صيغة منعكسة</span>
+        </label>
+        <div id="verbReflexiveSection" class="reflexive-block" hidden>
+          <div class="form-row-2">
+            <div><label class="form-label">المصدر المنعكس</label><input type="text" id="verbRefInfinitive" class="form-input" dir="ltr" /></div>
+            <div><label class="form-label">المعنى المنعكس</label><input type="text" id="verbRefMeaning" class="form-input" /></div>
+          </div>
+          <h4>🔄 التصريفات المنعكسة</h4>
+          <div class="form-row-2">
+            <div><label class="form-label">io</label><input type="text" id="verbRefIo" class="form-input" dir="ltr" /></div>
+            <div><label class="form-label">tu</label><input type="text" id="verbRefTu" class="form-input" dir="ltr" /></div>
+            <div><label class="form-label">lui/lei</label><input type="text" id="verbRefLui" class="form-input" dir="ltr" /></div>
+            <div><label class="form-label">noi</label><input type="text" id="verbRefNoi" class="form-input" dir="ltr" /></div>
+            <div><label class="form-label">voi</label><input type="text" id="verbRefVoi" class="form-input" dir="ltr" /></div>
+            <div><label class="form-label">loro</label><input type="text" id="verbRefLoro" class="form-input" dir="ltr" /></div>
+          </div>
+        </div>
+        <div style="display: flex; gap: 8px; margin-top: 14px;">
+          <button class="btn btn-ghost" id="btnResetVerb" style="flex: 1;">إفراغ</button>
+          <button class="btn btn-primary" id="btnSaveVerb" style="flex: 2;">💾 حفظ الفعل</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 class="section-title">📋 الأفعال المحفوظة (<span id="verbsCount">0</span>)</h3>
+        <div id="verbsList"></div>
+      </div>
+    </div>
+
+    <div id="tab-drive" hidden>
+      <div class="card" style="background: linear-gradient(135deg, #fff, #eef4ff); border-color: #c9d9f5;">
+        <h3 class="section-title" style="color: var(--info);">📋 فحص وتدقيق جمل Drive</h3>
+        <p style="font-size: 12.5px; color: var(--text-soft); margin-bottom: 10px; line-height: 1.6;">
+          <strong>النص 2 (هذا الحقل) هو مرجع تدقيق فقط — لا يُرفع إلى قاعدة البيانات.</strong>
+          الأداة تنظم النتائج في <strong>3 قوائم</strong>، وكل جملة لها أزرار: تعديل · تجاوز · استبدال · حذف.
+        </p>
+        <textarea id="driveInput" class="json-input" placeholder='الصق هنا JSON جمل Drive (مرجع التدقيق)…' style="min-height: 160px;" spellcheck="false"></textarea>
+        <div class="input-meta">
+          <span id="driveStatus" class="input-status">بانتظار النص…</span>
+          <div class="input-meta-actions">
+            <button class="mini-btn" id="btnDriveClear">🗑️ مسح</button>
+          </div>
+        </div>
+        <button class="btn btn-info" id="btnAnalyzeDrive" disabled>🔍 فحص ومقارنة</button>
+      </div>
+
+      <div class="card" style="background: linear-gradient(135deg, #fff, #f0f9ff); border-color: #c9d9f5;">
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+          <div style="flex: 1; min-width: 0;">
+            <h3 class="section-title" style="color: var(--info); margin-bottom: 4px;">📌 بنك المراجعة</h3>
+            <p style="font-size: 12px; color: var(--text-soft);">جمل محفوظة للمراجعة لاحقاً — <strong id="driveBankCount">0</strong> جملة</p>
+          </div>
+          <button class="btn btn-info" id="btnOpenDriveBank" style="width: auto; padding: 9px 16px; font-size: 13px;">📌 عرض البنك →</button>
+        </div>
+      </div>
+
+      <div class="card instructions" style="background: linear-gradient(135deg, #fff, #eef4ff); border-color: #c9d9f5;">
+        <h3 style="color: var(--info);">💡 كيف يعمل التدقيق؟</h3>
+        <ul>
+          <li><strong>1️⃣ الجمل النشطة:</strong> جمل DB بلا تطابق تام — كل جملة لها: ✏️ تعديل · ⏸️ تجاوز · 🔀 استبدال · 🗑️ حذف.</li>
+          <li><strong>2️⃣ مرجع النص 2:</strong> جمل النص 2 غير الموجودة في DB — ✏️ تعديل · 🔀 تطبيق على DB · 📌 حفظ · ⏸️ تجاوز · 🗑️ حذف.</li>
+          <li><strong>3️⃣ المتجاوزة:</strong> جمل DB بتطابق تام — ✏️ تعديل · ✅ تفعيل · 🔀 استبدال · 🗑️ حذف.</li>
+          <li><strong>🔀 قاعدة الاستبدال:</strong> يبدّل الإيطالية فقط، ويحتفظ بالترجمة العربية.</li>
+          <li><strong>🗑️ الحذف:</strong> يزيل الجملة من القائمة الحالية فقط (لا يحذفها من Firebase).</li>
+        </ul>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="preview-overlay" id="previewOverlay">
+  <div class="preview-modal">
+    <div class="preview-modal-header">
+      <h3 id="previewModalTitle">🔍 معاينة <span class="user-badge" id="previewUserBadge">…</span></h3>
+      <button class="btn-icon" id="btnClosePreview">✕</button>
+    </div>
+    <div class="preview-summary" id="previewSummary"></div>
+    <div class="preview-tabs" id="previewTabs">
+      <button class="preview-tab-btn collision-tab" data-tab="collisions" id="previewTabBtnCollisions" hidden>⚠️ تعارضات <span class="tab-count" id="collisionsTabCount">0</span></button>
+      <button class="preview-tab-btn active" data-tab="sentences" id="previewTabBtnSentences">📅 الجمل</button>
+      <button class="preview-tab-btn" data-tab="dictionary" id="previewTabBtnDictionary">📖 القاموس</button>
+      <button class="preview-tab-btn" data-tab="skipped" id="previewTabBtnSkipped">⏭️ متجاهَل</button>
+    </div>
+    <div class="preview-modal-body">
+      <div class="preview-tab-content" data-tab-content="collisions" id="previewTabCollisions" hidden></div>
+      <div class="preview-tab-content" data-tab-content="sentences" id="previewTabSentences"></div>
+      <div class="preview-tab-content" data-tab-content="dictionary" id="previewTabDictionary" hidden></div>
+      <div class="preview-tab-content" data-tab-content="skipped" id="previewTabSkipped" hidden></div>
+    </div>
+    <div class="preview-modal-footer">
+      <button class="btn btn-ghost" id="btnClosePreviewBottom">إغلاق</button>
+      <button class="btn btn-primary" id="btnConfirmUpload">🚀 رفع إلى السحابة</button>
+    </div>
+  </div>
+</div>
+
+<div class="preview-overlay" id="driveBankOverlay">
+  <div class="preview-modal" style="max-width: 620px;">
+    <div class="preview-modal-header">
+      <h3 style="color: var(--info);">📌 بنك المراجعة — جمل Drive</h3>
+      <button class="btn-icon" id="btnCloseDriveBank">✕</button>
+    </div>
+    <div class="preview-modal-body" id="driveBankList" style="max-height: 55vh;"></div>
+    <div class="preview-modal-footer">
+      <button class="btn btn-ghost" id="btnClearDriveBank" style="flex: 1;">🗑️ مسح الكل</button>
+      <button class="btn btn-info" id="btnRestoreDriveBank" style="flex: 1.5;">📥 استعادة للمحرر</button>
+    </div>
+  </div>
+</div>
+
+<div class="prompt-overlay" id="promptOverlay">
+  <div class="prompt-modal">
+    <div class="prompt-modal-header">
+      <h3 id="promptModalTitle">📝 برومبت (نسخ يدوي)</h3>
+      <button class="btn-icon" id="btnClosePrompt">✕</button>
+    </div>
+    <div class="prompt-modal-body">
+      <div class="prompt-content" id="promptContent"></div>
+    </div>
+    <div class="prompt-modal-footer">
+      <button class="btn btn-primary" id="btnCopyFromModal">📋 نسخ</button>
+      <button class="btn btn-ghost" id="btnCloseModal">إغلاق</button>
+    </div>
+  </div>
+</div>
+
+<div class="verb-prompt-overlay" id="verbPromptOverlay">
+  <div class="verb-prompt-modal">
+    <div class="verb-prompt-modal-header">
+      <h3>🔤 برومبت الأفعال — خصّص الأزمنة</h3>
+      <button class="btn-icon" id="btnCloseVerbPrompt">✕</button>
+    </div>
+    <div class="verb-prompt-modal-body">
+      <div class="tense-options">
+        <div class="tense-options-title"><span>⚙️ اختر الأزمنة:</span></div>
+        <label class="tense-checkbox locked"><input type="checkbox" checked disabled />
+          <div class="tense-checkbox-content"><div class="tense-checkbox-label"><span>📝 المضارع</span><span class="lock-badge">أساسي</span></div></div>
+        </label>
+        <label class="tense-checkbox"><input type="checkbox" id="chkRiflessivo" />
+          <div class="tense-checkbox-content"><div class="tense-checkbox-label">🔄 الانعكاسي</div></div>
+        </label>
+        <label class="tense-checkbox"><input type="checkbox" id="chkPassato" />
+          <div class="tense-checkbox-content"><div class="tense-checkbox-label">⏳ الماضي القريب</div></div>
+        </label>
+        <label class="tense-checkbox"><input type="checkbox" id="chkFuturo" />
+          <div class="tense-checkbox-content"><div class="tense-checkbox-label">⏭️ المستقبل</div></div>
+        </label>
+      </div>
+      <div class="verb-prompt-preview" id="verbPromptPreview"></div>
+    </div>
+    <div class="verb-prompt-modal-footer">
+      <button class="btn btn-purple" id="btnCopyVerbFromModal">📋 نسخ</button>
+      <button class="btn btn-ghost" id="btnCloseVerbPromptBottom">إغلاق</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+<script>
+(function () {
+  'use strict';
+
+  // ✅ [تعديل 1] — FirebaseConfig لمشروع صديقك
+  const FIREBASE_CONFIG = {
+    apiKey:            "AIzaSyAViYDMBtjyUz8OrqlYQ2JmLroYNacEsGw",
+    authDomain:        "a222-912ce.firebaseapp.com",
+    projectId:         "a222-912ce",
+    storageBucket:     "a222-912ce.firebasestorage.app",
+    messagingSenderId: "195818872560",
+    appId:             "1:195818872560:web:e6e490067246a47f1b6c35"
+  };
+  // ⚠️ USER_ID يبقى كما هو — قواعد صديقك تحمي هذا المسار بالضبط
+  const USER_ID = "ahmed_imparo_53eea_x7k9m2p4q8w3_admin";
+  const BATCH_LIMIT = 500;
+  // ✅ [تعديل 2 و 3] — مفاتيح localStorage معزولة (a222) لتفادي التداخل مع نسختك
+  const HISTORY_KEY = 'imparo_ingester_history_a222_v3';
+  const DRIVE_BANK_KEY = 'imparo_drive_review_bank_a222_v1';
+  const MEANING_SEPARATOR = ' • ';
+  const VALID_TYPES = ['verb', 'preposition', 'article', 'word'];
+  const PRONOUN_KEYS = ['io', 'tu', 'lui', 'noi', 'voi', 'loro'];
+  const PRONOUN_INPUTS = ['Io', 'Tu', 'Lui', 'Noi', 'Voi', 'Loro'];
+  const SIMILAR_THRESHOLD = 0.55;
+  const SUGGEST_THRESHOLD = 0.4;
+
+  const AI_PROMPT = `أنا أتعلم اللغة الإيطالية. سأعطيك قائمة بالجمل الإيطالية التي دونتها أثناء المذاكرة.
+المطلوب منك بدقة عالية تحليلياً ولغوياً:
+
+1. ترجمة كل جملة كاملة إلى اللغة العربية بدقة.
+2. استخراج **جميع الكلمات بدون استثناء** الموجودة في هذه الجمل.
+3. تصنيف كل كلمة حسب نوعها وتجهيز الملخص الخاص بها وفق القواعد التالية:
+   - الأفعال (type: "verb"): المصدر والمكافئ العربي، وفي summary تصريفات المضارع.
+   - حروف الجر (type: "preposition"): معناها الدقيق وفي summary استخداماتها.
+   - أدوات التعريف والتنكير (type: "article"): معناها وفي summary حالات الاستخدام.
+   - الأسماء والصفات (type: "word"): معناها والمفرد والمذكر/المؤنث.
+4. إزالة التكرار بحيث تذكر كل كلمة مرة واحدة فقط.
+5. إخراج النتيجة حصراً بصيغة JSON بدون أي شرح خارجي:
+
+{
+  "sentences": [{ "italian": "الجملة الإيطالية كاملة", "arabic": "الترجمة العربية" }],
+  "dictionary": [{ "word": "الكلمة", "lemma": "المصدر", "type": "verb OR preposition OR article OR word", "meaning": "المعنى", "summary": "الملخص" }]
+}
+
+إليك الجمل:
+[ضع جملك الإيطالية هنا]`;
+
+  const DRIVE_PROMPT = `أنا أرسل لك ملفاً يحتوي على جمل إيطالية ومترجمة للعربية (الملف رقم 1). 
+
+المطلوب منك بدقة متناهية:
+1. عدم تعديل أي كلمة أو حرف أو صياغة في الجمل إطلاقاً.
+2. تحويل كل هذه الجمل إلى هيكلية JSON النظيفة التي يفهمها موقعي بدون أي نصوص أو شرح خارجي.
+3. التأكد من تنسيق المفاتيح كالتالي:
+
+{
+  "sentences": [
+    { "italian": "الجملة الإيطالية كما هي بالملف", "arabic": "الترجمة العربية كما هي بالملف" }
+  ]
+}
+
+أخرج لي فقط نص الـ JSON المجهز.`;
+
+  function buildVerbPrompt(opts) {
+    const lines = [];
+    lines.push('- تصريفات الفعل في زمن المضارع (Presente) [أساسي دائمًا].');
+    if (opts.riflessivo) lines.push('- تصريفات الفعل الانعكاسي (Forma Riflessiva) إن وُجد.');
+    if (opts.passato) lines.push('- تصريفات الماضي القريب (Passato Prossimo) مع الفعل المساعد.');
+    if (opts.futuro) lines.push('- تصريفات المستقبل البسيط (Futuro Semplice).');
+    const summaryParts = ['المضارع: (io ..., tu ..., lui/lei ..., noi ..., voi ..., loro ...)'];
+    if (opts.riflessivo) summaryParts.push('الانعكاسي: (mi ..., ti ..., si ..., ci ..., vi ..., si ...)');
+    if (opts.passato) summaryParts.push('الماضي القريب: (io ho/sono ..., tu hai/sei ..., ...)');
+    if (opts.futuro) summaryParts.push('المستقبل: (io ...erò/irò ..., tu ...erai/irai ..., ...)');
+    const summaryTemplate = summaryParts.join(' | ');
+    return `أنا أتعلم اللغة الإيطالية. سأعطيك قائمة بالأفعال الإيطالية التي أدرسها.
+المطلوب منك بدقة عالية تحليلياً ولغوياً:
+
+1. تحديد المصدر (lemma) والمكافئ العربي الدقيق لكل فعل.
+2. تصنيف كل فعل بالنوع (type: "verb").
+3. إعداد الملخص الشامل (summary) لكل فعل بحيث يشمل:
+${lines.join('\n')}
+4. إزالة أي تكرار للأفعال.
+5. إخراج النتيجة النهائية حصراً بصيغة JSON:
+
+{
+  "sentences": [],
+  "dictionary": [
+    { "word": "الفعل", "lemma": "المصدر", "type": "verb", "meaning": "المعنى العربي", "summary": "${summaryTemplate}" }
+  ]
+}
+
+إليك قائمة الأفعال:
+[ضع أفعالك هنا]`;
+  }
+
+  const state = {
+    db: null,
+    ready: false,
+    processing: false,
+    pendingPreview: null,
+    verbs: [],
+    verbPromptOptions: { riflessivo: false, passato: false, futuro: false },
+    modalPromptText: '',
+    modalPromptTitle: '',
+    driveReviewBank: []
+  };
+
+  const $ = sel => document.querySelector(sel);
+  const $$ = sel => Array.from(document.querySelectorAll(sel));
+
+  function toast(msg, type = 'info') {
+    const el = $('#toast'); if (!el) return;
+    el.textContent = msg;
+    el.className = 'toast show' + (type === 'ok' ? ' ok' : type === 'err' ? ' err' : type === 'warn' ? ' warn' : '');
+    clearTimeout(toast._timer);
+    toast._timer = setTimeout(() => el.classList.remove('show'), 3000);
+  }
+  function setSync(s, t) {
+    const d = $('#syncDot'); if (d) d.className = 'sync-dot ' + (s || '');
+    if (t) $('#statusText').textContent = t;
+  }
+  function setStatus(text, type = '') { const el = $('#inputStatus'); if (el) { el.textContent = text; el.className = 'input-status ' + type; } }
+  function setVerbAiStatus(text, type = '') { const el = $('#verbAiStatus'); if (el) { el.textContent = text; el.className = 'input-status ' + type; } }
+  function setDriveStatus(text, type = '') { const el = $('#driveStatus'); if (el) { el.textContent = text; el.className = 'input-status ' + type; } }
+  function normalizeKey(word) { return String(word || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\p{L}']/gu, '').trim(); }
+  function normalizeMeaning(s) { return String(s || '').trim().toLowerCase().replace(/\s+/g, ' '); }
+  function escapeHtml(s) { return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+  function mergeMeanings(oldM, newM) {
+    oldM = String(oldM || '').trim(); newM = String(newM || '').trim();
+    if (!oldM) return newM; if (!newM) return oldM;
+    const parts = oldM.split(new RegExp('\\s*[•|]\\s*')).map(s => s.trim()).filter(Boolean);
+    if (parts.map(normalizeMeaning).includes(normalizeMeaning(newM))) return oldM;
+    return oldM + MEANING_SEPARATOR + newM;
+  }
+  function compareMeanings(oldM, newM) {
+    const merged = mergeMeanings(oldM, newM);
+    return { merged, added: merged !== String(oldM || '').trim(), same: merged === String(oldM || '').trim() };
+  }
+
+  function levenshtein(a, b) {
+    if (a === b) return 0;
+    if (!a.length) return b.length;
+    if (!b.length) return a.length;
+    const m = a.length, n = b.length;
+    let prev = new Uint16Array(n + 1);
+    let curr = new Uint16Array(n + 1);
+    for (let j = 0; j <= n; j++) prev[j] = j;
+    for (let i = 1; i <= m; i++) {
+      curr[0] = i;
+      for (let j = 1; j <= n; j++) {
+        curr[j] = Math.min(prev[j] + 1, curr[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      }
+      const t = prev; prev = curr; curr = t;
+    }
+    return prev[n];
+  }
+  function sentenceSimilarity(a, b) {
+    a = String(a || '').toLowerCase().trim();
+    b = String(b || '').toLowerCase().trim();
+    if (!a || !b) return 0;
+    if (a === b) return 1;
+    const ta = a.split(/\s+/).filter(Boolean);
+    const tb = b.split(/\s+/).filter(Boolean);
+    const setA = new Set(ta);
+    const setB = new Set(tb);
+    let inter = 0;
+    setA.forEach(x => { if (setB.has(x)) inter++; });
+    const union = setA.size + setB.size - inter;
+    const jaccard = union ? inter / union : 0;
+    if (jaccard === 0) {
+      const maxLen = Math.max(a.length, b.length);
+      if (Math.abs(a.length - b.length) > maxLen * 0.5) return jaccard * 0.3;
+    }
+    const lev = levenshtein(a, b);
+    const maxLen = Math.max(a.length, b.length);
+    const levSim = maxLen ? 1 - lev / maxLen : 0;
+    return jaccard * 0.35 + levSim * 0.65;
+  }
+
+  function loadDriveReviewBank() { try { return JSON.parse(localStorage.getItem(DRIVE_BANK_KEY) || '[]'); } catch { return []; } }
+  function saveDriveReviewBankList(items) { try { localStorage.setItem(DRIVE_BANK_KEY, JSON.stringify(items.slice(0, 500))); } catch {} }
+  function updateDriveBankUI() { const el = $('#driveBankCount'); if (el) el.textContent = state.driveReviewBank.length; }
+
+  function parseTenseSections(summary) {
+    const sections = {};
+    if (!summary) return sections;
+    const parts = String(summary).split(/\s*\|\s*|\n+/).map(s => s.trim()).filter(Boolean);
+    parts.forEach(part => {
+      const lower = part.toLowerCase();
+      let key = null;
+      if (/المضارع|presente/.test(lower)) key = 'presente';
+      else if (/انعكاس|riflessiv/.test(lower)) key = 'riflessivo';
+      else if (/ماضي قريب|passato prossimo/.test(lower)) key = 'passato';
+      else if (/مستقبل|futuro/.test(lower)) key = 'futuro';
+      else { const m = part.match(/^([^:]+):/); key = m ? m[1].trim().toLowerCase() : 'section_' + part.substring(0, 15).toLowerCase().replace(/\s+/g, '_'); }
+      if (!sections[key]) sections[key] = part;
+    });
+    return sections;
+  }
+  function mergeTenses(oldSummary, newSummary) {
+    const oldSections = parseTenseSections(oldSummary);
+    const newSections = parseTenseSections(newSummary);
+    const merged = {};
+    Object.keys(oldSections).forEach(k => { merged[k] = oldSections[k]; });
+    Object.keys(newSections).forEach(k => { if (!merged[k]) merged[k] = newSections[k]; });
+    return Object.values(merged).join(' | ');
+  }
+  function getNewTenseSections(oldSummary, newSummary) {
+    const oldSections = parseTenseSections(oldSummary);
+    const newSections = parseTenseSections(newSummary);
+    const newKeys = [];
+    Object.keys(newSections).forEach(k => { if (!oldSections[k]) newKeys.push({ key: k, text: newSections[k] }); });
+    return newKeys;
+  }
+
+  async function initFirebase() {
+    try {
+      if (!window.firebase) throw new Error('مكتبات Firebase غير محمّلة');
+      if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+      state.db = firebase.firestore();
+      await state.db.collection('users').doc(USER_ID).get();
+      state.ready = true;
+      setSync('online', 'متصل — مشروع a222-912ce');
+      $('#previewUserBadge').textContent = USER_ID.slice(0, 20) + '…';
+      await loadVerbs();
+    } catch (err) {
+      console.error('[Ingester] init:', err);
+      setSync('offline', 'فشل الاتصال: ' + (err.message || err));
+      toast('فشل الاتصال بقاعدة البيانات', 'err');
+    }
+  }
+
+  function verbsCol() { return state.db.collection('users').doc(USER_ID).collection('verbs'); }
+  async function loadVerbs() {
+    try {
+      const snap = await verbsCol().get();
+      state.verbs = snap.docs.map(d => Object.assign({ id: d.id }, d.data() || {}));
+      renderVerbsList();
+    } catch (err) { console.warn('[Verbs] load:', err); }
+  }
+  function buildFormsIndex(v) {
+    const forms = new Set();
+    const add = (s) => { if (!s) return; const k = normalizeKey(s); if (k) forms.add(k); };
+    const addReflexive = (s) => { if (!s) return; add(s); const parts = String(s).trim().split(/\s+/); add(parts[parts.length - 1]); };
+    add(v.infinitive);
+    if (v.present) Object.values(v.present).forEach(add);
+    add(v.reflexive_infinitive);
+    if (v.present_reflexive) Object.values(v.present_reflexive).forEach(addReflexive);
+    return Array.from(forms);
+  }
+  function resetVerbForm() {
+    $('#verbEditId').value = '';
+    $('#verbInfinitive').value = '';
+    $('#verbMeaning').value = '';
+    $('#verbHasReflexive').checked = false;
+    $('#verbReflexiveSection').hidden = true;
+    $('#verbRefInfinitive').value = '';
+    $('#verbRefMeaning').value = '';
+    PRONOUN_INPUTS.forEach(p => {
+      const el = document.getElementById('verbPres' + p); if (el) el.value = '';
+      const rel = document.getElementById('verbRef' + p); if (rel) rel.value = '';
+    });
+    $('#verbFormTitle').textContent = '➕ إضافة فعل جديد';
+  }
+  function editVerb(id) {
+    const v = state.verbs.find(x => x.id === id); if (!v) return;
+    $('#verbEditId').value = id;
+    $('#verbInfinitive').value = v.infinitive || '';
+    $('#verbMeaning').value = v.meaning || '';
+    const hasRef = !!v.reflexive_infinitive;
+    $('#verbHasReflexive').checked = hasRef;
+    $('#verbReflexiveSection').hidden = !hasRef;
+    $('#verbRefInfinitive').value = v.reflexive_infinitive || '';
+    $('#verbRefMeaning').value = v.reflexive_meaning || '';
+    const pres = v.present || {};
+    PRONOUN_KEYS.forEach((k, i) => { const el = document.getElementById('verbPres' + PRONOUN_INPUTS[i]); if (el) el.value = pres[k] || ''; });
+    const rPres = v.present_reflexive || {};
+    PRONOUN_KEYS.forEach((k, i) => { const el = document.getElementById('verbRef' + PRONOUN_INPUTS[i]); if (el) el.value = rPres[k] || ''; });
+    $('#verbFormTitle').textContent = '✏️ تعديل: ' + (v.infinitive || '');
+    $('#verbInfinitive').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+  async function deleteVerb(id) {
+    const v = state.verbs.find(x => x.id === id); if (!v) return;
+    if (!confirm(`حذف الفعل "${v.infinitive}"؟`)) return;
+    try {
+      setSync('syncing', 'جارٍ الحذف…');
+      await verbsCol().doc(id).delete();
+      state.verbs = state.verbs.filter(x => x.id !== id);
+      renderVerbsList();
+      setSync('online', 'متصل — مشروع a222-912ce');
+      toast('تم الحذف', 'ok');
+    } catch (err) { console.error(err); setSync('offline', 'فشل الحذف'); toast('فشل الحذف', 'err'); }
+  }
+  async function saveVerb() {
+    const infinitive = $('#verbInfinitive').value.trim();
+    const meaning = $('#verbMeaning').value.trim();
+    if (!infinitive) { toast('أدخل المصدر', 'err'); return; }
+    if (!meaning) { toast('أدخل المعنى', 'err'); return; }
+    const hasRef = $('#verbHasReflexive').checked;
+    const present = {};
+    PRONOUN_KEYS.forEach((k, i) => { present[k] = document.getElementById('verbPres' + PRONOUN_INPUTS[i]).value.trim(); });
+    if (!Object.values(present).some(Boolean)) { toast('أضف تصريفات المضارع', 'err'); return; }
+    const data = { infinitive, meaning, reflexive_infinitive: hasRef ? ($('#verbRefInfinitive').value.trim() || null) : null, reflexive_meaning: hasRef ? ($('#verbRefMeaning').value.trim() || null) : null, present, present_reflexive: null, updated_at: Date.now() };
+    if (hasRef) {
+      const rPres = {};
+      PRONOUN_KEYS.forEach((k, i) => { rPres[k] = document.getElementById('verbRef' + PRONOUN_INPUTS[i]).value.trim(); });
+      data.present_reflexive = rPres;
+    }
+    data.forms_index = buildFormsIndex(data);
+    try {
+      setSync('syncing', 'جارٍ الحفظ…');
+      const key = normalizeKey(infinitive);
+      await verbsCol().doc(key).set(data, { merge: true });
+      data.id = key;
+      const idx = state.verbs.findIndex(x => x.id === key);
+      if (idx >= 0) state.verbs[idx] = data; else state.verbs.push(data);
+      renderVerbsList();
+      resetVerbForm();
+      setSync('online', 'متصل — تم الحفظ');
+      toast(`✅ "${infinitive}" محفوظ`, 'ok');
+    } catch (err) { console.error(err); setSync('offline', 'فشل الحفظ'); toast('فشل الحفظ', 'err'); }
+  }
+  function renderVerbsList() {
+    const wrap = $('#verbsList');
+    $('#verbsCount').textContent = state.verbs.length;
+    if (!state.verbs.length) { wrap.innerHTML = '<div class="empty-state">لا توجد أفعال</div>'; return; }
+    wrap.innerHTML = state.verbs.map(v => {
+      const conjCount = v.present ? Object.values(v.present).filter(Boolean).length : 0;
+      const hasRef = !!v.reflexive_infinitive;
+      return `
+        <div class="verb-item">
+          <div class="verb-item-body">
+            <div class="verb-item-inf" dir="ltr">${escapeHtml(v.infinitive || '')}</div>
+            <div class="verb-item-meaning">${escapeHtml(v.meaning || '—')}</div>
+            <div class="verb-item-meta">
+              <span class="verb-badge conj">${conjCount}/6</span>
+              ${hasRef ? `<span class="verb-badge reflexive">🔄 ${escapeHtml(v.reflexive_infinitive)}</span>` : ''}
+            </div>
+          </div>
+          <div class="verb-item-actions">
+            <button data-edit="${escapeHtml(v.id)}">✏️</button>
+            <button class="danger" data-del="${escapeHtml(v.id)}">🗑️</button>
+          </div>
+        </div>`;
+    }).join('');
+    wrap.querySelectorAll('[data-edit]').forEach(b => b.addEventListener('click', () => editVerb(b.dataset.edit)));
+    wrap.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', () => deleteVerb(b.dataset.del)));
+  }
+
+  function stripCodeFences(text) {
+    return String(text).replace(/^\s*```json\s*/i, '').replace(/^\s*```\s*/i, '').replace(/\s*```\s*$/i, '').trim();
+  }
+  function parseInput(raw) {
+    const text = stripCodeFences(raw);
+    if (!text) throw new Error('أدخل JSON أولاً');
+    let data; try { data = JSON.parse(text); } catch (e) { throw new Error('JSON غير صالح — ' + e.message); }
+    let sentences = [], dictionary = [];
+    if (data && typeof data === 'object' && !Array.isArray(data)) {
+      if (Array.isArray(data.sentences)) sentences = data.sentences.slice();
+      if (Array.isArray(data.dictionary)) dictionary = data.dictionary.slice();
+    }
+    if (Array.isArray(data)) {
+      data.forEach(item => {
+        if (item && item.italian && item.arabic) {
+          sentences.push({ italian: item.italian, arabic: item.arabic });
+          if (Array.isArray(item.dictionary)) dictionary.push(...item.dictionary);
+        }
+      });
+    }
+    if (!sentences.length && !dictionary.length) throw new Error('لم يُعثر على بيانات');
+    return { sentences, dictionary };
+  }
+  function validateSentence(s) {
+    if (!s || typeof s !== 'object') return null;
+    const italian = String(s.italian || '').trim();
+    const arabic = String(s.arabic || '').trim();
+    return (italian && arabic) ? { italian, arabic } : null;
+  }
+  function validateDriveSentence(s) {
+    if (!s || typeof s !== 'object') return null;
+    const italian = String(s.italian || '').trim();
+    if (!italian) return null;
+    const arabic = String(s.arabic || '').trim();
+    return { italian, arabic };
+  }
+  function validateDictEntry(d) {
+    if (!d || typeof d !== 'object') return null;
+    const word = String(d.word || '').trim();
+    if (!word) return null;
+    const type = VALID_TYPES.includes(String(d.type || '').toLowerCase()) ? String(d.type).toLowerCase() : 'word';
+    return { word, lemma: String(d.lemma || word).trim(), type, meaning: String(d.meaning || '').trim(), summary: String(d.summary || '').trim() };
+  }
+  function buildDictMap(entries) {
+    const map = new Map();
+    entries.forEach(d => {
+      const entry = validateDictEntry(d); if (!entry) return;
+      const key = normalizeKey(entry.word); if (!key) return;
+      if (map.has(key)) {
+        const ex = map.get(key);
+        ex.meaning = mergeMeanings(ex.meaning, entry.meaning);
+        if (!ex.lemma && entry.lemma) ex.lemma = entry.lemma;
+        if (!ex.summary && entry.summary) ex.summary = entry.summary;
+        if (ex.type === 'word' && entry.type !== 'word') ex.type = entry.type;
+      } else map.set(key, entry);
+    });
+    return map;
+  }
+
+  function parseVerbAIInput(raw) {
+    const text = stripCodeFences(raw);
+    if (!text) throw new Error('الصق JSON أولاً');
+    let data; try { data = JSON.parse(text); } catch (e) { throw new Error('JSON غير صالح — ' + e.message); }
+    let list = [];
+    if (Array.isArray(data)) list = data;
+    else if (data && typeof data === 'object') {
+      if (Array.isArray(data.dictionary)) list = data.dictionary;
+      else if (Array.isArray(data.verbs)) list = data.verbs;
+      else if (data.word || data.lemma) list = [data];
+    }
+    const verbs = list.map(d => {
+      if (!d || typeof d !== 'object') return null;
+      const word = String(d.word || '').trim();
+      const lemma = String(d.lemma || '').trim();
+      if (!word && !lemma) return null;
+      return { word: word || lemma, lemma: lemma || word, type: 'verb', meaning: String(d.meaning || '').trim(), summary: String(d.summary || '').trim() };
+    }).filter(Boolean);
+    if (!verbs.length) throw new Error('لم يُعثر على أفعال صالحة');
+    return { dictionary: verbs };
+  }
+  function previewVerbAIInput() {
+    const text = $('#verbAiInput').value.trim();
+    const btn = $('#btnAnalyzeVerbAI'); const ta = $('#verbAiInput');
+    if (!text) { setVerbAiStatus('بانتظار النص…'); btn.disabled = true; ta.classList.remove('valid','invalid'); return; }
+    try {
+      const parsed = parseVerbAIInput(text);
+      setVerbAiStatus(`✅ ${parsed.dictionary.length} فعل جاهز`, 'ok');
+      btn.disabled = false; ta.classList.add('valid'); ta.classList.remove('invalid');
+    } catch (e) {
+      setVerbAiStatus('⚠️ ' + e.message, 'err');
+      btn.disabled = true; ta.classList.add('invalid'); ta.classList.remove('valid');
+    }
+  }
+  function previewInput() {
+    const text = $('#jsonInput').value.trim();
+    const btn = $('#btnAnalyze'); const ta = $('#jsonInput');
+    if (!text) { setStatus('بانتظار النص…'); btn.disabled = true; ta.classList.remove('valid','invalid'); return; }
+    try {
+      const parsed = parseInput(text);
+      const validS = parsed.sentences.map(validateSentence).filter(Boolean);
+      const dictMap = buildDictMap(parsed.dictionary);
+      setStatus(`✅ ${validS.length} جملة + ${dictMap.size} كلمة`, 'ok');
+      btn.disabled = (validS.length + dictMap.size === 0);
+      ta.classList.add('valid'); ta.classList.remove('invalid');
+    } catch (e) {
+      setStatus('⚠️ ' + e.message, 'err');
+      btn.disabled = true; ta.classList.add('invalid'); ta.classList.remove('valid');
+    }
+  }
+
+  function parseDriveInput(raw) {
+    const text = stripCodeFences(raw);
+    if (!text) throw new Error('الصق JSON أولاً');
+    let data;
+    try { data = JSON.parse(text); } catch (e) { throw new Error('JSON غير صالح — ' + e.message); }
+    let rawSentences = [];
+    if (data && typeof data === 'object' && !Array.isArray(data) && Array.isArray(data.sentences)) {
+      rawSentences = data.sentences;
+    } else if (Array.isArray(data)) {
+      rawSentences = data;
+    } else {
+      throw new Error('الصيغة غير صحيحة — يجب أن يحتوي JSON على مصفوفة "sentences"');
+    }
+    const sentences = rawSentences.map(validateDriveSentence).filter(Boolean);
+    if (!sentences.length) throw new Error('لم يُعثر على جمل صالحة');
+    return { sentences };
+  }
+  function previewDriveInput() {
+    const text = $('#driveInput').value.trim();
+    const btn = $('#btnAnalyzeDrive'); const ta = $('#driveInput');
+    if (!text) { setDriveStatus('بانتظار النص…'); btn.disabled = true; ta.classList.remove('valid','invalid'); return; }
+    try {
+      const parsed = parseDriveInput(text);
+      const withAr = parsed.sentences.filter(s => s.arabic).length;
+      const withoutAr = parsed.sentences.length - withAr;
+      let msg = `✅ ${parsed.sentences.length} جملة جاهزة للفحص`;
+      if (withoutAr > 0) msg += ` (${withoutAr} بدون ترجمة)`;
+      setDriveStatus(msg, 'ok');
+      btn.disabled = false; ta.classList.add('valid'); ta.classList.remove('invalid');
+    } catch (e) {
+      setDriveStatus('⚠️ ' + e.message, 'err');
+      btn.disabled = true; ta.classList.add('invalid'); ta.classList.remove('valid');
+    }
+  }
+  async function analyzeDrive() {
+    if (state.processing) return;
+    if (!state.ready) { toast('القاعدة غير جاهزة', 'err'); return; }
+    const text = $('#driveInput').value.trim();
+    if (!text) { toast('الصق JSON أولاً', 'err'); return; }
+    let parsed;
+    try { parsed = parseDriveInput(text); } catch (e) { toast(e.message, 'err'); return; }
+    state.processing = true;
+    setSync('syncing', 'جارٍ الفحص…');
+    const btn = $('#btnAnalyzeDrive');
+    btn.classList.add('loading'); btn.disabled = true; btn.textContent = 'جارٍ الفحص…';
+    try {
+      await runDriveAudit(parsed.sentences);
+    } catch (err) {
+      console.error(err); toast('فشل الفحص', 'err');
+      setSync('offline', 'خطأ');
+    } finally {
+      state.processing = false;
+      btn.classList.remove('loading'); btn.textContent = '🔍 فحص ومقارنة';
+      previewDriveInput();
+    }
+  }
+  function clearDriveInput() { $('#driveInput').value = ''; state.pendingPreview = null; previewDriveInput(); toast('تم المسح'); }
+
+  async function runDriveAudit(rawSentences) {
+    const sentSnap = await state.db.collection('users').doc(USER_ID).collection('sentences').get();
+
+    const dbSentences = [];
+    sentSnap.docs.forEach(doc => {
+      const d = doc.data() || {};
+      const it = String(d.italian || '').trim();
+      if (!it) return;
+      const ar = String(d.arabic || '').trim();
+      dbSentences.push({
+        dbId: doc.id,
+        italian: it,
+        arabic: ar,
+        _originalItalian: it,
+        _originalArabic: ar,
+        _pendingItalian: null,
+        _pendingArabic: null,
+        _status: 'active',
+        _matchType: null,
+        _suggestedText2: null,
+        _isDuplicateInDb: false,
+        _editMode: false
+      });
+    });
+
+    const text2Seen = new Set();
+    const text2All = [];
+    const text2Dup = [];
+    rawSentences.forEach(s => {
+      const it = String(s.italian || '').trim();
+      if (!it) return;
+      const k = it.toLowerCase();
+      if (text2Seen.has(k)) { text2Dup.push({ italian: it, arabic: s.arabic || '' }); return; }
+      text2Seen.add(k);
+      text2All.push({ italian: it, arabic: s.arabic || '' });
+    });
+
+    const italianCounts = new Map();
+    dbSentences.forEach(s => {
+      const k = s.italian.toLowerCase();
+      italianCounts.set(k, (italianCounts.get(k) || 0) + 1);
+    });
+    dbSentences.forEach(s => {
+      if ((italianCounts.get(s.italian.toLowerCase()) || 0) > 1) s._isDuplicateInDb = true;
+    });
+
+    dbSentences.forEach(db => {
+      const dbKey = db.italian.toLowerCase();
+      if (text2Seen.has(dbKey)) {
+        db._status = 'bypassed';
+        db._matchType = 'exact';
+        return;
+      }
+      let best = null, bestScore = 0;
+      for (let i = 0; i < text2All.length; i++) {
+        const t2 = text2All[i];
+        const sc = sentenceSimilarity(db.italian, t2.italian);
+        if (sc > bestScore) { bestScore = sc; best = t2; if (sc === 1) break; }
+      }
+      if (best && bestScore >= SIMILAR_THRESHOLD) {
+        db._matchType = 'similar';
+        db._suggestedText2 = { italian: best.italian, score: bestScore };
+      }
+    });
+
+    const dbItalianSet = new Set(dbSentences.map(s => s.italian.toLowerCase()));
+    const text2Unmatched = [];
+    text2All.forEach(t2 => {
+      const k = t2.italian.toLowerCase();
+      if (dbItalianSet.has(k)) return;
+      let best = null, bestScore = 0;
+      for (let i = 0; i < dbSentences.length; i++) {
+        const db = dbSentences[i];
+        const sc = sentenceSimilarity(t2.italian, db.italian);
+        if (sc > bestScore) { bestScore = sc; best = db; if (sc === 1) break; }
+      }
+      text2Unmatched.push({
+        italian: t2.italian,
+        arabic: t2.arabic,
+        _originalItalian: t2.italian,
+        _originalArabic: t2.arabic,
+        _suggestedDbId: (best && bestScore >= SUGGEST_THRESHOLD) ? best.dbId : null,
+        _suggestedDbItalian: (best && bestScore >= SUGGEST_THRESHOLD) ? best.italian : null,
+        _suggestedScore: bestScore,
+        _applied: false,
+        _skipped: false,
+        _editMode: false,
+        _deleted: false
+      });
+    });
+
+    const p = {
+      _source: 'drive-audit',
+      _dbSentences: dbSentences,
+      _activeList: [],
+      _bypassedList: [],
+      _text2Unmatched: text2Unmatched,
+      _text2Dup: text2Dup,
+      _auditSubtab: 'active',
+      _hasRendered: false,
+      _freshSentences: [],
+      _dictOps: [],
+      _dictSkipped: [],
+      _collisions: [],
+      _dupSentences: [],
+      sentNew: 0, sentDup: 0, dictNew: 0, dictAdded: 0, dictSame: 0
+    };
+
+    rebuildLists(p);
+    state.pendingPreview = p;
+    renderPreviewModal(p);
+    openPreviewModal();
+    setSync('online', 'متصل — راجع تقرير التدقيق');
+  }
+
+  function rebuildLists(p) {
+    p._activeList = p._dbSentences.filter(s => s._status === 'active');
+    p._activeList.sort((a, b) => {
+      const aPriority = (a._matchType === 'similar' || a._isDuplicateInDb) ? 1 : 0;
+      const bPriority = (b._matchType === 'similar' || b._isDuplicateInDb) ? 1 : 0;
+      return aPriority - bPriority;
+    });
+    p._bypassedList = p._dbSentences.filter(s => s._status === 'bypassed');
+  }
+
+  function getVisibleActiveList(p) {
+    return p._activeList.filter(s => s._status === 'active');
+  }
+  function getVisibleBypassedList(p) {
+    return p._bypassedList.filter(s => s._status === 'bypassed');
+  }
+  function getVisibleText2List(p) {
+    return p._text2Unmatched.filter(t => !t._deleted);
+  }
+
+  function openPreviewModal() { $('#previewOverlay').classList.add('is-open'); document.body.style.overflow = 'hidden'; }
+  function closePreviewModal() { $('#previewOverlay').classList.remove('is-open'); document.body.style.overflow = ''; }
+  function switchPreviewTab(name) {
+    $$('.preview-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+    $$('.preview-tab-content').forEach(c => { c.hidden = c.dataset.tabContent !== name; });
+  }
+
+  function renderPreviewModal(p) {
+    if (p._source === 'drive-audit') { renderDriveAuditPreview(p); return; }
+
+    $('#previewModalTitle').innerHTML = `🔍 معاينة قبل الرفع <span class="user-badge" id="previewUserBadge">${escapeHtml(USER_ID.slice(0, 20) + '…')}</span>`;
+    $('#previewTabs').hidden = false;
+
+    const collisions = p._collisions || [];
+    const hasCollisions = collisions.length > 0;
+    const isDriveSource = p._source === 'drive';
+
+    $('#previewSummary').innerHTML = `
+      ${hasCollisions ? `<div class="preview-stat collision"><span class="stat-value">${collisions.length}</span><span class="stat-label">⚠️ تعارضات</span></div>` : ''}
+      <div class="preview-stat success"><span class="stat-value">${p.sentNew}</span><span class="stat-label">جمل جديدة</span></div>
+      ${!isDriveSource ? `<div class="preview-stat success"><span class="stat-value">${p.dictNew}</span><span class="stat-label">كلمات جديدة</span></div>` : ''}
+      ${!isDriveSource ? `<div class="preview-stat added"><span class="stat-value">${p.dictAdded}</span><span class="stat-label">معانٍ إضافية</span></div>` : ''}
+      <div class="preview-stat skipped"><span class="stat-value">${p.sentDup + p.dictSame}</span><span class="stat-label">سيُتجاهل</span></div>
+    `;
+
+    const collTabBtn = $('#previewTabBtnCollisions');
+    collTabBtn.hidden = !hasCollisions;
+    $('#collisionsTabCount').textContent = collisions.length;
+
+    document.querySelector('[data-tab="sentences"]').innerHTML = `📅 الجمل <span class="tab-count">${p.sentNew}</span>`;
+    document.querySelector('[data-tab="dictionary"]').innerHTML = `📖 القاموس <span class="tab-count">${p.dictNew + p.dictAdded}</span>`;
+    document.querySelector('[data-tab="skipped"]').innerHTML = `⏭️ متجاهَل <span class="tab-count">${p.sentDup + p.dictSame}</span>`;
+
+    if (hasCollisions) {
+      const collWrap = $('#previewTabCollisions');
+      collWrap.innerHTML = `
+        <div class="collision-bulk">
+          <span class="collision-bulk-label">⚡ تطبيق على الكل:</span>
+          <button class="collision-bulk-btn" data-bulk="ignore">⏭️ تجاهل</button>
+          <button class="collision-bulk-btn" data-bulk="replace">🔄 استبدال</button>
+          <button class="collision-bulk-btn" data-bulk="merge-tenses">➕ الأزمنة الجديدة</button>
+        </div>
+        ${collisions.map((c, idx) => renderCollisionCard(c, idx)).join('')}
+      `;
+      bindCollisionEvents();
+    }
+
+    $('#previewTabSentences').innerHTML = p._freshSentences.length === 0
+      ? '<div class="empty-state">لا توجد جمل جديدة</div>'
+      : p._freshSentences.map((s, i) => `
+          <div class="preview-list-item">
+            <div class="preview-item-num">${i + 1}</div>
+            <div class="preview-item-body">
+              <div class="preview-item-it" dir="ltr">${escapeHtml(s.italian)}</div>
+              <div class="preview-item-ar">${escapeHtml(s.arabic)}</div>
+            </div>
+          </div>`).join('');
+
+    $('#previewTabDictionary').innerHTML = p._dictOps.length === 0
+      ? '<div class="empty-state">لا توجد عناصر جديدة</div>'
+      : p._dictOps.map(op => {
+          const kind = op.kind === 'meaning-added' ? '<span class="preview-badge added">+ معنى</span>' : '<span class="preview-badge new">جديدة</span>';
+          const type = `<span class="preview-badge type-${op.data.type || 'word'}">${op.data.type || 'word'}</span>`;
+          return `
+            <div class="preview-list-item">
+              <div class="preview-item-body">
+                <div class="preview-item-word-row">
+                  <span class="preview-item-word" dir="ltr">${escapeHtml(op.data.word || op.key)}</span>
+                  ${type}${kind}
+                </div>
+                <div class="preview-item-meaning">${escapeHtml(op.data.meaning || '')}</div>
+                ${op.data.summary ? `<div class="preview-item-summary">${escapeHtml(op.data.summary)}</div>` : ''}
+              </div>
+            </div>`;
+        }).join('');
+
+    const allSkipped = [
+      ...p._dupSentences.map(d => ({ main: d.sentence.italian, sub: d.sentence.arabic, reason: d.reason })),
+      ...p._dictSkipped.map(d => ({ main: d.word, sub: d.oldMeaning, reason: d.reason }))
+    ];
+    $('#previewTabSkipped').innerHTML = allSkipped.length === 0
+      ? '<div class="empty-state">لا شيء متجاهَل 🎉</div>'
+      : allSkipped.map(item => `
+          <div class="preview-list-item">
+            <div class="preview-item-body">
+              <div class="preview-item-word-row">
+                <span class="preview-item-word" dir="ltr">${escapeHtml(item.main)}</span>
+                <span class="preview-badge skipped">${escapeHtml(item.reason)}</span>
+              </div>
+              ${item.sub ? `<div class="preview-item-meaning">${escapeHtml(item.sub)}</div>` : ''}
+            </div>
+          </div>`).join('');
+
+    updateConfirmButton();
+
+    const currentActiveTab = document.querySelector('.preview-tab-btn.active')?.dataset.tab;
+    if (p._hasRendered && currentActiveTab) {
+      if (currentActiveTab === 'collisions' && !hasCollisions) switchPreviewTab('sentences');
+      else switchPreviewTab(currentActiveTab);
+    } else {
+      p._hasRendered = true;
+      if (hasCollisions) switchPreviewTab('collisions');
+      else if (p.sentNew > 0) switchPreviewTab('sentences');
+      else if (p.dictNew + p.dictAdded > 0) switchPreviewTab('dictionary');
+      else switchPreviewTab('skipped');
+    }
+  }
+
+  function renderDriveAuditPreview(p) {
+    const activeCount = getVisibleActiveList(p).length;
+    const text2Count = getVisibleText2List(p).length;
+    const bypassedCount = getVisibleBypassedList(p).length;
+    const pendingCount = p._dbSentences.filter(s => {
+      const itCh = s._pendingItalian !== null && s._pendingItalian !== undefined && s._pendingItalian !== s._originalItalian;
+      const arCh = s._pendingArabic !== null && s._pendingArabic !== undefined && s._pendingArabic !== s._originalArabic;
+      return itCh || arCh;
+    }).length;
+
+    $('#previewModalTitle').innerHTML = `🔍 تقرير الفحص والتدقيق <span class="user-badge" id="previewUserBadge">${escapeHtml(USER_ID.slice(0, 20) + '…')}</span>`;
+
+    $('#previewSummary').innerHTML = `
+      <div class="preview-stat success"><span class="stat-value">${activeCount}</span><span class="stat-label">✅ نشطة</span></div>
+      <div class="preview-stat added"><span class="stat-value">${text2Count}</span><span class="stat-label">📋 مرجع النص 2</span></div>
+      <div class="preview-stat skipped"><span class="stat-value">${bypassedCount}</span><span class="stat-label">⏸️ متجاوزة</span></div>
+      ${pendingCount > 0
+        ? `<div class="preview-stat collision"><span class="stat-value">${pendingCount}</span><span class="stat-label">💾 تعديلات معلقة</span></div>`
+        : `<div class="preview-stat"><span class="stat-value">0</span><span class="stat-label">💾 تعديلات معلقة</span></div>`}
+    `;
+
+    $('#previewTabs').hidden = true;
+    $$('.preview-tab-content').forEach(c => { c.hidden = c.dataset.tabContent !== 'sentences'; });
+
+    renderDriveAuditBody(p);
+    updateConfirmButton();
+  }
+
+  function renderDriveAuditBody(p) {
+    const activeCount = getVisibleActiveList(p).length;
+    const text2Count = getVisibleText2List(p).length;
+    const bypassedCount = getVisibleBypassedList(p).length;
+    const subtab = p._auditSubtab || 'active';
+    const wrap = $('#previewTabSentences');
+    wrap.hidden = false;
+
+    wrap.innerHTML = `
+      <div class="drive-audit-tabs">
+        <button class="drive-audit-tab-btn ${subtab === 'active' ? 'active' : ''}" data-subtab="active">✅ الجمل النشطة <span class="subtab-count">${activeCount}</span></button>
+        <button class="drive-audit-tab-btn ${subtab === 'text2' ? 'active' : ''}" data-subtab="text2">📋 مرجع النص 2 <span class="subtab-count">${text2Count}</span></button>
+        <button class="drive-audit-tab-btn ${subtab === 'bypassed' ? 'active' : ''}" data-subtab="bypassed">⏸️ المتجاوزة <span class="subtab-count">${bypassedCount}</span></button>
+      </div>
+      <div id="driveAuditContent"></div>
+    `;
+
+    $$('.drive-audit-tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        p._auditSubtab = btn.dataset.subtab;
+        renderDriveAuditBody(p);
+      });
+    });
+
+    renderAuditSubtab(p, subtab);
+  }
+
+  function renderAuditSubtab(p, name) {
+    const wrap = $('#driveAuditContent');
+    if (!wrap) return;
+    if (name === 'active') renderActiveList(p, wrap);
+    else if (name === 'text2') renderText2List(p, wrap);
+    else if (name === 'bypassed') renderBypassedList(p, wrap);
+  }
+
+  function renderActiveList(p, wrap) {
+    const list = getVisibleActiveList(p);
+    if (!list.length) {
+      wrap.innerHTML = '<div class="empty-state">لا توجد جمل نشطة</div>';
+      return;
+    }
+    const normalCount = list.filter(s => s._matchType !== 'similar' && !s._isDuplicateInDb && s._pendingItalian == null && s._pendingArabic == null).length;
+    const markedCount = list.length - normalCount;
+
+    wrap.innerHTML = `
+      <div class="audit-stats-mini">
+        📊 ${list.length} جملة نشطة — ${normalCount} عادية · ${markedCount} بها مطابقة/تكرار/تعديل
+      </div>
+      ${list.map((s, i) => renderActiveCard(s, i)).join('')}
+    `;
+    bindActiveActions(p);
+  }
+
+  function renderActiveCard(s, i) {
+    const isPendingIt = s._pendingItalian !== null && s._pendingItalian !== undefined;
+    const isPendingAr = s._pendingArabic !== null && s._pendingArabic !== undefined;
+    const isPending = isPendingIt || isPendingAr;
+    const isEditing = s._editMode === true;
+
+    if (isEditing) return renderEditCard(s, i, 'active');
+
+    const classes = ['audit-card'];
+    if (isPending) classes.push('pending-change');
+    else if (s._matchType === 'similar') classes.push('has-suggestion');
+    else if (s._isDuplicateInDb) classes.push('duplicate-db');
+
+    const dispIt = isPendingIt ? s._pendingItalian : s.italian;
+    const dispAr = isPendingAr ? s._pendingArabic : s.arabic;
+
+    return `
+      <div class="${classes.join(' ')}" data-audit-idx="${i}">
+        <div class="audit-card-header">
+          <span class="audit-card-num">${i + 1}</span>
+          ${s._isDuplicateInDb ? '<span class="audit-badge dup-db">🔁 مكررة في DB</span>' : ''}
+          ${s._matchType === 'similar' && s._suggestedText2 ? `<span class="audit-badge similar">≈ مشابه ${Math.round(s._suggestedText2.score * 100)}%</span>` : ''}
+          ${isPending ? '<span class="audit-badge pending">💾 تعديل معلّق</span>' : ''}
+        </div>
+        <div class="audit-sentence" dir="ltr">${escapeHtml(dispIt)}</div>
+        <div class="audit-arabic ${dispAr ? '' : 'empty'}">${dispAr ? escapeHtml(dispAr) : 'بدون ترجمة'}</div>
+
+        ${isPending ? `
+          <div class="audit-pending-change">
+            <div class="audit-pending-label">✨ التعديلات المعلّقة (ستُطبَّق عند الحفظ)</div>
+            ${isPendingIt && s._pendingItalian !== s._originalItalian ? `<div class="audit-pending-it" dir="ltr">🇮🇹 ${escapeHtml(s._pendingItalian)}</div>` : ''}
+            ${isPendingAr && s._pendingArabic !== s._originalArabic ? `<div style="font-size:12px;color:var(--text);margin-top:3px;">🇸🇦 ${escapeHtml(s._pendingArabic)}</div>` : ''}
+          </div>
+        ` : ''}
+
+        ${s._suggestedText2 && !isPending ? `
+          <div class="audit-suggestion">
+            <div class="audit-suggestion-label">🔀 جملة مشابهة في النص 2</div>
+            <div class="audit-suggestion-text" dir="ltr">${escapeHtml(s._suggestedText2.italian)}</div>
+            <div class="audit-suggestion-score">درجة التشابه: ${Math.round(s._suggestedText2.score * 100)}%</div>
+          </div>
+        ` : ''}
+
+        <div class="drive-actions">
+          ${isPending
+            ? `<button class="drive-action-btn undo" data-action="undo-pending" data-idx="${i}">↩️ تراجع</button>`
+            : s._suggestedText2
+              ? `<button class="drive-action-btn replace" data-action="apply-suggestion" data-idx="${i}">🔀 استبدال</button>`
+              : ''}
+          <button class="drive-action-btn edit" data-action="edit" data-idx="${i}">✏️ تعديل</button>
+          <button class="drive-action-btn bypass" data-action="bypass" data-idx="${i}">⏸️ تجاوز</button>
+          <button class="drive-action-btn delete" data-action="delete" data-idx="${i}">🗑️ حذف</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderEditCard(s, i, listType) {
+    const dispIt = (s._pendingItalian !== null && s._pendingItalian !== undefined) ? s._pendingItalian : s.italian;
+    const dispAr = (s._pendingArabic !== null && s._pendingArabic !== undefined) ? s._pendingArabic : s.arabic;
+    return `
+      <div class="audit-card editing" data-audit-idx="${i}" data-list-type="${listType}">
+        <div class="audit-card-header">
+          <span class="audit-card-num">${i + 1}</span>
+          <span class="audit-badge editing-badge">✏️ وضع التعديل</span>
+        </div>
+        <label class="audit-edit-label">الجملة الإيطالية *</label>
+        <textarea class="audit-edit-input" data-field="italian" dir="ltr" rows="2">${escapeHtml(dispIt)}</textarea>
+        <label class="audit-edit-label">الترجمة العربية (اختياري)</label>
+        <textarea class="audit-edit-input" data-field="arabic" rows="2">${escapeHtml(dispAr || '')}</textarea>
+        <div class="audit-edit-actions">
+          <button class="drive-action-btn save" data-action="save-edit" data-idx="${i}" data-list-type="${listType}">💾 حفظ</button>
+          <button class="drive-action-btn cancel" data-action="cancel-edit" data-idx="${i}" data-list-type="${listType}">✖️ إلغاء</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function bindActiveActions(p) {
+    $$('#driveAuditContent .audit-card .drive-action-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const idx = parseInt(btn.dataset.idx, 10);
+        const action = btn.dataset.action;
+        if (isNaN(idx)) return;
+
+        if (action === 'save-edit' || action === 'cancel-edit') {
+          const listType = btn.dataset.listType;
+          const card = btn.closest('.audit-card');
+          handleEditAction(p, idx, action, listType, card);
+          return;
+        }
+
+        const s = getVisibleActiveList(p)[idx];
+        if (!s) return;
+
+        switch (action) {
+          case 'bypass':
+            s._status = 'bypassed';
+            s._pendingItalian = null;
+            s._pendingArabic = null;
+            s._editMode = false;
+            rebuildLists(p);
+            renderDriveAuditBody(p);
+            updateConfirmButton();
+            toast('⏸️ تم التجاوز', 'ok');
+            break;
+          case 'apply-suggestion':
+            if (s._suggestedText2) {
+              s._pendingItalian = s._suggestedText2.italian;
+              renderDriveAuditBody(p);
+              updateConfirmButton();
+              toast('🔀 تم تعليق تعديل الإيطالية (احتفظنا بالعربية)', 'ok');
+            }
+            break;
+          case 'undo-pending':
+            s._pendingItalian = null;
+            s._pendingArabic = null;
+            renderDriveAuditBody(p);
+            updateConfirmButton();
+            toast('↩️ تم التراجع', 'ok');
+            break;
+          case 'edit':
+            p._dbSentences.forEach(x => { x._editMode = false; });
+            p._text2Unmatched.forEach(x => { x._editMode = false; });
+            s._editMode = true;
+            renderDriveAuditBody(p);
+            break;
+          case 'delete':
+            if (!confirm(`🗑️ حذف الجملة من القائمة الحالية؟\n\n"${s.italian.substring(0, 80)}"\n\n(لن تُحذف من Firebase — فقط من هذه الجلسة)`)) return;
+            s._status = 'deleted';
+            rebuildLists(p);
+            renderDriveAuditBody(p);
+            updateConfirmButton();
+            toast('🗑️ تم الحذف من القائمة', 'ok');
+            break;
+        }
+      });
+    });
+  }
+
+  function renderText2List(p, wrap) {
+    const list = getVisibleText2List(p);
+    if (!list.length) {
+      wrap.innerHTML = '<div class="empty-state">🎉 لا توجد جمل مرجعية متبقية</div>';
+      return;
+    }
+    wrap.innerHTML = `
+      <div class="audit-note">
+        📋 ${list.length} جملة مرجعية. يمكنك تطبيقها على DB، أو تعديلها، أو حفظها، أو تجاوزها.
+      </div>
+      ${list.map((t, i) => renderText2Card(p, t, i)).join('')}
+    `;
+    bindText2Actions(p);
+  }
+
+  function renderText2Card(p, t, i) {
+    const isEditing = t._editMode === true;
+    if (isEditing) return renderEditCard(t, i, 'text2');
+
+    const hasSuggestion = !!t._suggestedDbId;
+    const targetDb = hasSuggestion ? p._dbSentences.find(d => d.dbId === t._suggestedDbId) : null;
+    const classes = ['audit-card'];
+    if (t._skipped) classes.push('skipped-t2');
+    else if (hasSuggestion) classes.push('has-suggestion');
+
+    return `
+      <div class="${classes.join(' ')}" data-text2-idx="${i}">
+        <div class="audit-card-header">
+          <span class="audit-card-num">${i + 1}</span>
+          <span class="audit-badge new-item">🆕 مرجع</span>
+          ${t._applied ? '<span class="audit-badge pending">✅ مُطبّق</span>' : ''}
+          ${t._skipped ? '<span class="audit-badge similar">⏸️ متجاوز</span>' : ''}
+        </div>
+        <div class="audit-sentence" dir="ltr">${escapeHtml(t.italian)}</div>
+        ${t.arabic ? `<div class="audit-arabic">${escapeHtml(t.arabic)}</div>` : '<div class="audit-arabic empty">بدون ترجمة</div>'}
+
+        ${hasSuggestion && targetDb && !t._applied ? `
+          <div class="audit-suggestion">
+            <div class="audit-suggestion-label">🎯 أقرب جملة في DB (${Math.round(t._suggestedScore * 100)}%)</div>
+            <div class="audit-suggestion-text" dir="ltr">${escapeHtml(targetDb.italian)}</div>
+            <div class="audit-suggestion-score">🕌 ترجمتها الحالية: ${escapeHtml(targetDb.arabic || '—')}</div>
+          </div>
+        ` : ''}
+
+        <div class="drive-actions">
+          ${hasSuggestion && !t._applied && !t._skipped
+            ? `<button class="drive-action-btn replace" data-action="apply-text2" data-idx="${i}">🔀 تطبيق على DB</button>`
+            : ''}
+          <button class="drive-action-btn edit" data-action="edit-t2" data-idx="${i}">✏️ تعديل</button>
+          ${!t._skipped
+            ? `<button class="drive-action-btn bypass" data-action="skip-t2" data-idx="${i}">⏸️ تجاوز</button>`
+            : `<button class="drive-action-btn reactivate" data-action="unskip-t2" data-idx="${i}">✅ تفعيل</button>`}
+          <button class="drive-action-btn save-later" data-action="save-t2" data-idx="${i}">📌 حفظ</button>
+          <button class="drive-action-btn delete" data-action="delete-t2" data-idx="${i}">🗑️ حذف</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function bindText2Actions(p) {
+    $$('#driveAuditContent .audit-card .drive-action-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const idx = parseInt(btn.dataset.idx, 10);
+        const action = btn.dataset.action;
+        if (isNaN(idx)) return;
+
+        if (action === 'save-edit' || action === 'cancel-edit') {
+          const listType = btn.dataset.listType;
+          const card = btn.closest('.audit-card');
+          handleEditAction(p, idx, action, listType, card);
+          return;
+        }
+
+        const t = getVisibleText2List(p)[idx];
+        if (!t) return;
+
+        switch (action) {
+          case 'apply-text2':
+            if (!t._suggestedDbId) return;
+            const target = p._dbSentences.find(d => d.dbId === t._suggestedDbId);
+            if (!target) return;
+            target._pendingItalian = t.italian;
+            target._editMode = false;
+            target._suggestedText2 = null;
+            t._applied = true;
+            rebuildLists(p);
+            renderDriveAuditBody(p);
+            updateConfirmButton();
+            toast('🔀 تم تعليق تعديل الإيطالية في الجملة المستهدفة', 'ok');
+            break;
+          case 'edit-t2':
+            p._dbSentences.forEach(x => { x._editMode = false; });
+            p._text2Unmatched.forEach(x => { x._editMode = false; });
+            t._editMode = true;
+            renderDriveAuditBody(p);
+            break;
+          case 'skip-t2':
+            t._skipped = true;
+            renderDriveAuditBody(p);
+            updateConfirmButton();
+            toast('⏸️ تم التجاوز', 'ok');
+            break;
+          case 'unskip-t2':
+            t._skipped = false;
+            renderDriveAuditBody(p);
+            updateConfirmButton();
+            toast('✅ تم التفعيل', 'ok');
+            break;
+          case 'save-t2':
+            state.driveReviewBank.unshift({
+              italian: t.italian,
+              arabic: t.arabic || '',
+              saved_at: Date.now(),
+              source: 'drive-audit-text2'
+            });
+            saveDriveReviewBankList(state.driveReviewBank);
+            updateDriveBankUI();
+            toast('📌 تم الحفظ في البنك', 'ok');
+            break;
+          case 'delete-t2':
+            if (!confirm(`🗑️ حذف الجملة المرجعية من القائمة؟\n\n"${t.italian.substring(0, 80)}"`)) return;
+            t._deleted = true;
+            renderDriveAuditBody(p);
+            updateConfirmButton();
+            toast('🗑️ تم الحذف', 'ok');
+            break;
+        }
+      });
+    });
+  }
+
+  function renderBypassedList(p, wrap) {
+    const list = getVisibleBypassedList(p);
+    if (!list.length) {
+      wrap.innerHTML = '<div class="empty-state">لا توجد جمل متجاوزة</div>';
+      return;
+    }
+    wrap.innerHTML = `
+      <div class="audit-note">
+        ⏸️ ${list.length} جملة لها تطابق إيطالي تام مع النص 2 — مستبعدة. يمكنك تعديلها، تفعيلها، استبدالها، أو حذفها.
+      </div>
+      ${list.map((s, i) => renderBypassedCard(s, i)).join('')}
+    `;
+    bindBypassedActions(p);
+  }
+
+  function renderBypassedCard(s, i) {
+    const isEditing = s._editMode === true;
+    if (isEditing) return renderEditCard(s, i, 'bypassed');
+
+    const isPendingIt = s._pendingItalian !== null && s._pendingItalian !== undefined;
+    const isPendingAr = s._pendingArabic !== null && s._pendingArabic !== undefined;
+    const dispIt = isPendingIt ? s._pendingItalian : s.italian;
+    const dispAr = isPendingAr ? s._pendingArabic : s.arabic;
+
+    return `
+      <div class="audit-card bypassed" data-byp-idx="${i}">
+        <div class="audit-card-header">
+          <span class="audit-card-num">${i + 1}</span>
+          <span class="audit-badge exact">🎯 تطابق تام</span>
+          ${s._isDuplicateInDb ? '<span class="audit-badge dup-db">🔁 مكررة</span>' : ''}
+          ${(isPendingIt || isPendingAr) ? '<span class="audit-badge pending">💾 تعديل معلّق</span>' : ''}
+        </div>
+        <div class="audit-sentence" dir="ltr">${escapeHtml(dispIt)}</div>
+        <div class="audit-arabic ${dispAr ? '' : 'empty'}">${dispAr ? escapeHtml(dispAr) : 'بدون ترجمة'}</div>
+
+        ${(isPendingIt || isPendingAr) ? `
+          <div class="audit-pending-change">
+            <div class="audit-pending-label">✨ التعديلات المعلّقة</div>
+            ${isPendingIt && s._pendingItalian !== s._originalItalian ? `<div class="audit-pending-it" dir="ltr">🇮🇹 ${escapeHtml(s._pendingItalian)}</div>` : ''}
+            ${isPendingAr && s._pendingArabic !== s._originalArabic ? `<div style="font-size:12px;margin-top:3px;">🇸🇦 ${escapeHtml(s._pendingArabic)}</div>` : ''}
+          </div>
+        ` : ''}
+
+        <div class="drive-actions">
+          ${(isPendingIt || isPendingAr) ? `<button class="drive-action-btn undo" data-action="undo-byp" data-idx="${i}">↩️ تراجع</button>` : ''}
+          ${s._suggestedText2 && !(isPendingIt || isPendingAr) ? `<button class="drive-action-btn replace" data-action="replace-byp" data-idx="${i}">🔀 استبدال</button>` : ''}
+          <button class="drive-action-btn edit" data-action="edit-byp" data-idx="${i}">✏️ تعديل</button>
+          <button class="drive-action-btn reactivate" data-action="activate-byp" data-idx="${i}">✅ تفعيل</button>
+          <button class="drive-action-btn delete" data-action="delete-byp" data-idx="${i}">🗑️ حذف</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function bindBypassedActions(p) {
+    $$('#driveAuditContent .audit-card .drive-action-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const idx = parseInt(btn.dataset.idx, 10);
+        const action = btn.dataset.action;
+        if (isNaN(idx)) return;
+
+        if (action === 'save-edit' || action === 'cancel-edit') {
+          const listType = btn.dataset.listType;
+          const card = btn.closest('.audit-card');
+          handleEditAction(p, idx, action, listType, card);
+          return;
+        }
+
+        const s = getVisibleBypassedList(p)[idx];
+        if (!s) return;
+
+        switch (action) {
+          case 'activate-byp':
+            s._status = 'active';
+            s._matchType = null;
+            s._suggestedText2 = null;
+            s._editMode = false;
+            rebuildLists(p);
+            renderDriveAuditBody(p);
+            updateConfirmButton();
+            toast('✅ تم التفعيل', 'ok');
+            break;
+          case 'edit-byp':
+            p._dbSentences.forEach(x => { x._editMode = false; });
+            s._editMode = true;
+            renderDriveAuditBody(p);
+            break;
+          case 'replace-byp':
+            if (s._suggestedText2) {
+              s._pendingItalian = s._suggestedText2.italian;
+              renderDriveAuditBody(p);
+              updateConfirmButton();
+              toast('🔀 تم تعليق التعديل', 'ok');
+            }
+            break;
+          case 'undo-byp':
+            s._pendingItalian = null;
+            s._pendingArabic = null;
+            renderDriveAuditBody(p);
+            updateConfirmButton();
+            toast('↩️ تم التراجع', 'ok');
+            break;
+          case 'delete-byp':
+            if (!confirm(`🗑️ حذف الجملة من القائمة؟\n\n"${s.italian.substring(0, 80)}"\n\n(لن تُحذف من Firebase)`)) return;
+            s._status = 'deleted';
+            rebuildLists(p);
+            renderDriveAuditBody(p);
+            updateConfirmButton();
+            toast('🗑️ تم الحذف', 'ok');
+            break;
+        }
+      });
+    });
+  }
+
+  function handleEditAction(p, idx, action, listType, card) {
+    let target = null;
+    if (listType === 'active') target = getVisibleActiveList(p)[idx];
+    else if (listType === 'bypassed') target = getVisibleBypassedList(p)[idx];
+    else if (listType === 'text2') target = getVisibleText2List(p)[idx];
+
+    if (!target) return;
+
+    if (action === 'cancel-edit') {
+      target._editMode = false;
+      renderDriveAuditBody(p);
+      return;
+    }
+
+    const itEl = card.querySelector('[data-field="italian"]');
+    const arEl = card.querySelector('[data-field="arabic"]');
+    const newIt = String(itEl ? itEl.value : '').trim();
+    const newAr = String(arEl ? arEl.value : '').trim();
+
+    if (!newIt) { toast('الجملة الإيطالية مطلوبة', 'err'); return; }
+
+    if (listType === 'text2') {
+      target.italian = newIt;
+      target.arabic = newAr;
+      target._originalItalian = newIt;
+      target._originalArabic = newAr;
+    } else {
+      if (newIt !== target._originalItalian) target._pendingItalian = newIt;
+      else target._pendingItalian = null;
+      if (newAr !== target._originalArabic) target._pendingArabic = newAr;
+      else target._pendingArabic = null;
+    }
+    target._editMode = false;
+    renderDriveAuditBody(p);
+    updateConfirmButton();
+    toast('✅ تم الحفظ محلياً', 'ok');
+  }
+
+  function renderCollisionCard(c, idx) {
+    const newTenses = getNewTenseSections(c.existing.summary, c.incoming.summary);
+    const newMeaningDifferent = compareMeanings(c.existing.meaning, c.incoming.meaning).added;
+    return `
+      <div class="collision-card" data-collision-idx="${idx}">
+        <div class="collision-header">
+          <div class="collision-word" dir="ltr">${escapeHtml(c.incoming.word || c.key)}<span class="collision-badge">⚠️ موجود مسبقاً</span></div>
+        </div>
+        <div class="collision-compare">
+          <div class="collision-side">
+            <div class="collision-side-label">📌 الموجود حالياً</div>
+            <div class="collision-side-meaning">${escapeHtml(c.existing.meaning || '—')}</div>
+            ${c.existing.summary ? `<div class="collision-side-summary">${escapeHtml(c.existing.summary)}</div>` : ''}
+          </div>
+          <div class="collision-side new-side">
+            <div class="collision-side-label">✨ الجديد</div>
+            <div class="collision-side-meaning">${escapeHtml(c.incoming.meaning || '—')}</div>
+            ${c.incoming.summary ? `<div class="collision-side-summary">${escapeHtml(c.incoming.summary)}</div>` : ''}
+          </div>
+        </div>
+        <div class="collision-actions-title">اختر الإجراء:</div>
+        <div class="collision-actions">
+          <button class="collision-action-btn${c.action === 'ignore' ? ' active' : ''}" data-action="ignore" data-idx="${idx}"><span class="icon">⏭️</span><span>تجاهل</span></button>
+          <button class="collision-action-btn${c.action === 'replace' ? ' active' : ''}" data-action="replace" data-idx="${idx}"><span class="icon">🔄</span><span>استبدال</span></button>
+          <button class="collision-action-btn${c.action === 'merge-tenses' ? ' active' : ''}" data-action="merge-tenses" data-idx="${idx}"><span class="icon">➕</span><span>الأزمنة الجديدة</span></button>
+        </div>
+        <div class="collision-preview${c.action === 'merge-tenses' ? ' show' : ''}" data-preview-idx="${idx}">
+          ${newTenses.length === 0 ? `<div style="color: var(--warn); font-weight: 700;">⚠️ لا توجد أزمنة جديدة</div>` : `
+            <div style="margin-bottom: 4px;"><strong>✅ سيتم إضافة ${newTenses.length} قسم:</strong></div>
+            ${newTenses.map(t => `<div style="margin-top: 3px;">• ${escapeHtml(t.text.substring(0, 100))}${t.text.length > 100 ? '…' : ''}</div>`).join('')}
+          `}
+        </div>
+      </div>
+    `;
+  }
+
+  function bindCollisionEvents() {
+    $$('.collision-action-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const idx = parseInt(btn.dataset.idx, 10);
+        const action = btn.dataset.action;
+        if (!state.pendingPreview || !state.pendingPreview._collisions) return;
+        state.pendingPreview._collisions[idx].action = action;
+        const card = btn.closest('.collision-card');
+        card.querySelectorAll('.collision-action-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const preview = card.querySelector('.collision-preview');
+        if (preview) preview.classList.toggle('show', action === 'merge-tenses');
+        updateConfirmButton();
+      });
+    });
+    $$('.collision-bulk-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const action = btn.dataset.bulk;
+        if (!state.pendingPreview || !state.pendingPreview._collisions) return;
+        state.pendingPreview._collisions.forEach(c => { c.action = action; });
+        const collWrap = $('#previewTabCollisions');
+        collWrap.innerHTML = `
+          <div class="collision-bulk">
+            <span class="collision-bulk-label">⚡ تطبيق على الكل:</span>
+            <button class="collision-bulk-btn" data-bulk="ignore">⏭️ تجاهل</button>
+            <button class="collision-bulk-btn" data-bulk="replace">🔄 استبدال</button>
+            <button class="collision-bulk-btn" data-bulk="merge-tenses">➕ الأزمنة الجديدة</button>
+          </div>
+          ${state.pendingPreview._collisions.map((c, idx) => renderCollisionCard(c, idx)).join('')}
+        `;
+        bindCollisionEvents();
+        updateConfirmButton();
+        toast(`تم التطبيق على ${state.pendingPreview._collisions.length} تعارض`, 'ok');
+      });
+    });
+  }
+
+  function updateConfirmButton() {
+    const p = state.pendingPreview;
+    if (!p) return;
+    const btn = $('#btnConfirmUpload');
+
+    if (p._source === 'drive-audit') {
+      const pendingCount = p._dbSentences.filter(s => {
+        const itCh = s._pendingItalian !== null && s._pendingItalian !== undefined && s._pendingItalian !== s._originalItalian;
+        const arCh = s._pendingArabic !== null && s._pendingArabic !== undefined && s._pendingArabic !== s._originalArabic;
+        return itCh || arCh;
+      }).length;
+      btn.className = 'btn btn-info';
+      btn.disabled = pendingCount === 0;
+      btn.innerHTML = pendingCount === 0
+        ? '💾 لا تعديلات لتطبيقها'
+        : `💾 تطبيق ${pendingCount} تعديل على السحابة`;
+      return;
+    }
+
+    const collisions = p._collisions || [];
+    const isDrive = p._source === 'drive';
+    const driveActiveCount = isDrive
+      ? p._freshSentences.filter(s => (s._status || 'active') === 'active').length
+      : p.sentNew;
+    const total = driveActiveCount + p.dictNew + p.dictAdded + collisions.filter(c => c.action !== 'ignore').length;
+    btn.className = 'btn btn-primary';
+    btn.disabled = total === 0;
+    btn.innerHTML = total === 0 ? '🚫 لا يوجد جديد للرفع' : `🚀 رفع ${total} عملية`;
+  }
+
+  async function analyze() {
+    if (state.processing) return;
+    if (!state.ready) { toast('القاعدة غير جاهزة', 'err'); return; }
+    const text = $('#jsonInput').value.trim();
+    if (!text) { toast('الصق JSON أولاً', 'err'); return; }
+    let parsed; try { parsed = parseInput(text); } catch (e) { toast(e.message, 'err'); return; }
+    const sentences = parsed.sentences.map(validateSentence).filter(Boolean);
+    const dictMap = buildDictMap(parsed.dictionary);
+    if (!sentences.length && !dictMap.size) { toast('لا توجد بيانات صالحة', 'err'); return; }
+    state.processing = true;
+    setSync('syncing', 'جارٍ التحليل…');
+    const btn = $('#btnAnalyze');
+    btn.classList.add('loading'); btn.disabled = true; btn.textContent = 'جارٍ التحليل…';
+    try { await runAnalysis(sentences, dictMap, 'json'); }
+    catch (err) { console.error(err); toast('فشل التحليل', 'err'); setSync('offline', 'خطأ'); }
+    finally {
+      state.processing = false;
+      btn.classList.remove('loading'); btn.textContent = '🔍 تحليل ومعاينة قبل الرفع';
+      previewInput();
+    }
+  }
+
+  async function analyzeVerbAI() {
+    if (state.processing) return;
+    if (!state.ready) { toast('القاعدة غير جاهزة', 'err'); return; }
+    const text = $('#verbAiInput').value.trim();
+    if (!text) { toast('الصق JSON أولاً', 'err'); return; }
+    let parsed; try { parsed = parseVerbAIInput(text); } catch (e) { toast(e.message, 'err'); return; }
+    state.processing = true;
+    setSync('syncing', 'جارٍ التحليل…');
+    const btn = $('#btnAnalyzeVerbAI');
+    btn.classList.add('loading'); btn.disabled = true; btn.textContent = 'جارٍ التحليل…';
+    try {
+      const dictMap = buildDictMap(parsed.dictionary);
+      await runAnalysis([], dictMap, 'verb-ai');
+    } catch (err) { console.error(err); toast('فشل التحليل', 'err'); setSync('offline', 'خطأ'); }
+    finally {
+      state.processing = false;
+      btn.classList.remove('loading'); btn.textContent = '🔍 معاينة ورفع الأفعال';
+      previewVerbAIInput();
+    }
+  }
+
+  async function runAnalysis(sentences, dictMap, source) {
+    const [sentSnap, dictSnap] = await Promise.all([
+      state.db.collection('users').doc(USER_ID).collection('sentences').get(),
+      state.db.collection('users').doc(USER_ID).collection('dictionary').get()
+    ]);
+    const existingItalian = new Set();
+    sentSnap.docs.forEach(doc => { const d = doc.data() || {}; const it = String(d.italian || '').trim().toLowerCase(); if (it) existingItalian.add(it); });
+    const freshSentences = [], dupSentences = [], batchSeen = new Set();
+    sentences.forEach(s => {
+      const key = s.italian.trim().toLowerCase();
+      if (existingItalian.has(key)) dupSentences.push({ sentence: s, reason: 'موجودة مسبقًا' });
+      else if (batchSeen.has(key)) dupSentences.push({ sentence: s, reason: 'مكررة في نفس الدفعة' });
+      else { freshSentences.push(s); batchSeen.add(key); }
+    });
+    const existingDict = new Map();
+    dictSnap.docs.forEach(doc => existingDict.set(doc.id, doc.data() || {}));
+    const dictOps = [], dictSkipped = [], collisions = [];
+    dictMap.forEach((entry, key) => {
+      const old = existingDict.get(key);
+      if (!old) {
+        dictOps.push({ key, kind: 'new', data: { word: entry.word, lemma: entry.lemma, type: entry.type, meaning: entry.meaning, summary: entry.summary, updated_at: Date.now() } });
+        return;
+      }
+      if (entry.type === 'verb' && old.type === 'verb') {
+        collisions.push({ key, existing: { word: old.word || key, lemma: old.lemma || key, type: 'verb', meaning: String(old.meaning || '').trim(), summary: String(old.summary || '').trim() }, incoming: { word: entry.word, lemma: entry.lemma, type: 'verb', meaning: entry.meaning, summary: entry.summary }, action: 'merge-tenses' });
+        return;
+      }
+      const oldM = String(old.meaning || '').trim();
+      const cmp = compareMeanings(oldM, entry.meaning);
+      if (cmp.same) { dictSkipped.push({ word: entry.word, key, reason: 'نفس المعنى', oldMeaning: oldM }); return; }
+      dictOps.push({ key, kind: 'meaning-added', data: { word: entry.word || old.word || '', lemma: old.lemma || entry.lemma || entry.word, type: (old.type && old.type !== 'word') ? old.type : (entry.type || 'word'), meaning: cmp.merged, summary: old.summary || entry.summary || '', updated_at: Date.now() } });
+    });
+    const p = {
+      sentNew: freshSentences.length, sentDup: dupSentences.length,
+      dictNew: dictOps.filter(o => o.kind === 'new').length,
+      dictAdded: dictOps.filter(o => o.kind === 'meaning-added').length,
+      dictSame: dictSkipped.length,
+      _freshSentences: freshSentences, _dupSentences: dupSentences,
+      _dictOps: dictOps, _dictSkipped: dictSkipped,
+      _collisions: collisions, _source: source, _hasRendered: false
+    };
+    state.pendingPreview = p;
+    renderPreviewModal(p);
+    openPreviewModal();
+    setSync('online', 'متصل — راجع المعاينة');
+  }
+
+  async function commitUpload() {
+    const p = state.pendingPreview;
+    if (!p) return;
+    if (p._source === 'drive-audit') return commitDriveAudit(p);
+    return commitStandard(p);
+  }
+
+  async function commitDriveAudit(p) {
+    if (state.processing) return;
+    const toApply = p._dbSentences.filter(s => {
+      const itCh = s._pendingItalian !== null && s._pendingItalian !== undefined && s._pendingItalian !== s._originalItalian;
+      const arCh = s._pendingArabic !== null && s._pendingArabic !== undefined && s._pendingArabic !== s._originalArabic;
+      return itCh || arCh;
+    });
+    if (!toApply.length) { toast('لا توجد تعديلات للتطبيق', 'warn'); return; }
+
+    state.processing = true;
+    const btn = $('#btnConfirmUpload');
+    btn.classList.add('loading'); btn.disabled = true; btn.textContent = 'جارٍ التطبيق…';
+    setSync('syncing', 'جارٍ تطبيق التعديلات…');
+    const startedAt = Date.now();
+    let applied = 0;
+    let failed = 0;
+
+    try {
+      const col = state.db.collection('users').doc(USER_ID).collection('sentences');
+      const now = Date.now();
+
+      for (let i = 0; i < toApply.length; i += BATCH_LIMIT) {
+        const chunk = toApply.slice(i, i + BATCH_LIMIT);
+        try {
+          const batch = state.db.batch();
+          chunk.forEach(s => {
+            const update = { updated_at: now };
+            if (s._pendingItalian !== null && s._pendingItalian !== undefined) update.italian = s._pendingItalian;
+            if (s._pendingArabic !== null && s._pendingArabic !== undefined) update.arabic = s._pendingArabic;
+            batch.update(col.doc(s.dbId), update);
+          });
+          await batch.commit();
+          chunk.forEach(s => {
+            if (s._pendingItalian !== null && s._pendingItalian !== undefined) {
+              s.italian = s._pendingItalian;
+              s._originalItalian = s._pendingItalian;
+              s._pendingItalian = null;
+            }
+            if (s._pendingArabic !== null && s._pendingArabic !== undefined) {
+              s.arabic = s._pendingArabic;
+              s._originalArabic = s._pendingArabic;
+              s._pendingArabic = null;
+            }
+          });
+          applied += chunk.length;
+        } catch (err) { console.error('Batch apply error:', err); failed += chunk.length; }
+      }
+
+      const elapsed = ((Date.now() - startedAt) / 1000).toFixed(1);
+      if (failed === 0) {
+        toast(`✅ تم تطبيق ${applied} تعديل (${elapsed}s)`, 'ok');
+        setSync('online', 'متصل — تم التطبيق');
+      } else {
+        toast(`⚠️ ${applied} نجح · ${failed} فشل`, 'warn');
+        setSync('online', 'متصل — نجاح جزئي');
+      }
+      addHistoryEntry({ timestamp: now, sentNew: 0, sentDup: 0, dictNew: 0, dictAdded: applied, dictSame: 0, failed, auditMode: true });
+      rebuildLists(p);
+      renderPreviewModal(p);
+    } catch (err) {
+      console.error(err);
+      toast('فشل التطبيق: ' + (err.message || err), 'err');
+      setSync('offline', 'فشل التطبيق');
+    } finally {
+      state.processing = false;
+      btn.classList.remove('loading');
+      updateConfirmButton();
+    }
+  }
+
+  async function commitStandard(p) {
+    if (state.processing) return;
+    const collisions = p._collisions || [];
+    const activeCollisions = collisions.filter(c => c.action !== 'ignore');
+    const isDrive = p._source === 'drive';
+    const sentencesToUpload = isDrive
+      ? p._freshSentences.filter(s => (s._status || 'active') === 'active')
+      : p._freshSentences;
+    const total = sentencesToUpload.length + p.dictNew + p.dictAdded + activeCollisions.length;
+    if (total === 0) { toast('لا يوجد جديد للرفع', 'warn'); return; }
+
+    state.processing = true;
+    const btn = $('#btnConfirmUpload');
+    btn.classList.add('loading'); btn.disabled = true; btn.textContent = 'جارٍ الرفع…';
+    setSync('syncing', 'جارٍ الرفع…');
+    const startedAt = Date.now();
+    let failed = 0;
+    let collisionsApplied = 0;
+
+    try {
+      const userRef = state.db.collection('users').doc(USER_ID);
+      const sentencesCol = userRef.collection('sentences');
+      const dictCol = userRef.collection('dictionary');
+      const now = Date.now();
+      const ops = [];
+
+      sentencesToUpload.forEach(s => {
+        ops.push({ ref: sentencesCol.doc(), data: { italian: s.italian, arabic: s.arabic || '', next_review: now - 1, easy_streak: 0, medium_streak: 0, in_mistake_bank: false, is_frozen: false, created_at: now, last_reviewed: null }, merge: false });
+      });
+      p._dictOps.forEach(op => { ops.push({ ref: dictCol.doc(op.key), data: op.data, merge: true }); });
+      activeCollisions.forEach(c => {
+        if (c.action === 'replace') {
+          ops.push({ ref: dictCol.doc(c.key), data: { word: c.incoming.word, lemma: c.incoming.lemma, type: 'verb', meaning: c.incoming.meaning, summary: c.incoming.summary, updated_at: now }, merge: false });
+          collisionsApplied++;
+        } else if (c.action === 'merge-tenses') {
+          const merged = mergeTenses(c.existing.summary, c.incoming.summary);
+          if (merged !== c.existing.summary) {
+            ops.push({ ref: dictCol.doc(c.key), data: { word: c.existing.word, lemma: c.existing.lemma, type: 'verb', meaning: c.existing.meaning, summary: merged, updated_at: now }, merge: true });
+            collisionsApplied++;
+          }
+        }
+      });
+
+      for (let i = 0; i < ops.length; i += BATCH_LIMIT) {
+        const chunk = ops.slice(i, i + BATCH_LIMIT);
+        try {
+          const batch = state.db.batch();
+          chunk.forEach(op => op.merge ? batch.set(op.ref, op.data, { merge: true }) : batch.set(op.ref, op.data));
+          await batch.commit();
+        } catch (err) { console.error(err); failed += chunk.length; }
+      }
+
+      const elapsed = ((Date.now() - startedAt) / 1000).toFixed(1);
+      renderResults({
+        sentNew: sentencesToUpload.length, sentDup: p.sentDup,
+        dictNew: p.dictNew, dictAdded: p.dictAdded,
+        dictSame: p.dictSame, failed, elapsed,
+        collisionsApplied,
+        collisionsIgnored: collisions.length - activeCollisions.length,
+        details: {
+          duplicateSentences: p._dupSentences.map(d => ({ italian: d.sentence.italian, reason: d.reason })),
+          skippedDict: p._dictSkipped.map(d => ({ word: d.word, reason: d.reason, oldMeaning: d.oldMeaning })),
+          meaningAddedList: p._dictOps.filter(o => o.kind === 'meaning-added').map(o => ({ word: o.data.word, meaning: o.data.meaning }))
+        }
+      });
+      addHistoryEntry({ timestamp: now, sentNew: sentencesToUpload.length, sentDup: p.sentDup, dictNew: p.dictNew, dictAdded: p.dictAdded + collisionsApplied, dictSame: p.dictSame, failed });
+      closePreviewModal();
+      if (failed === 0) {
+        const parts = [];
+        if (sentencesToUpload.length) parts.push(`${sentencesToUpload.length} جملة`);
+        if (p.dictNew + p.dictAdded) parts.push(`${p.dictNew + p.dictAdded} كلمة`);
+        toast(`✅ ${parts.join(' · ') || 'تم الرفع'}`, 'ok');
+        setSync('online', 'متصل — تم الرفع');
+        if (p._source === 'verb-ai') { $('#verbAiInput').value = ''; previewVerbAIInput(); }
+        else if (p._source === 'drive') { $('#driveInput').value = ''; previewDriveInput(); }
+        else { $('#jsonInput').value = ''; previewInput(); }
+        state.pendingPreview = null;
+      } else {
+        toast(`⚠️ نجاح جزئي`, 'warn');
+        setSync('online', 'متصل — نجاح جزئي');
+      }
+    } catch (err) {
+      console.error(err); toast('خطأ: ' + (err.message || err), 'err');
+      setSync('offline', 'فشل الرفع');
+    } finally {
+      state.processing = false;
+      btn.classList.remove('loading'); btn.disabled = false;
+      btn.innerHTML = '🚀 رفع إلى السحابة';
+    }
+  }
+
+  function renderResults(r) {
+    $('#resultsCard').hidden = false;
+    $('#resultsGrid').innerHTML = `
+      <div class="result-item success"><span class="v">${r.sentNew}</span><span class="l">جمل جديدة</span></div>
+      <div class="result-item skipped"><span class="v">${r.sentDup}</span><span class="l">مكررة</span></div>
+      <div class="result-item success"><span class="v">${r.dictNew}</span><span class="l">كلمات جديدة</span></div>
+      <div class="result-item added"><span class="v">${r.dictAdded + (r.collisionsApplied || 0)}</span><span class="l">إضافات</span></div>
+      ${r.failed > 0 ? `<div class="result-item error"><span class="v">${r.failed}</span><span class="l">فشل</span></div>` : ''}
+      <div class="result-item"><span class="v">${r.elapsed}s</span><span class="l">الوقت</span></div>
+    `;
+    let html = '';
+    if (r.details.duplicateSentences.length) {
+      html += `<div style="margin-bottom:12px;"><h5 style="font-size:12px;font-weight:800;color:var(--text-soft);margin-bottom:6px;border-bottom:1px solid var(--border);padding-bottom:4px;">📅 مكررة</h5>`;
+      r.details.duplicateSentences.forEach(d => {
+        html += `<div style="padding:6px 8px;margin-bottom:4px;background:var(--surface-2);border-radius:8px;font-size:12px;"><span dir="ltr" style="font-family:Georgia;">${escapeHtml(d.italian)}</span></div>`;
+      });
+      html += `</div>`;
+    }
+    $('#resultsDetailsContent').innerHTML = html || '<div class="empty-state">لا توجد تفاصيل</div>';
+    $('#resultsCard').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  function loadHistory() { try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); } catch { return []; } }
+  function saveHistory(items) { try { localStorage.setItem(HISTORY_KEY, JSON.stringify(items.slice(0, 10))); } catch {} }
+  function addHistoryEntry(entry) { const h = loadHistory(); h.unshift(entry); saveHistory(h); renderHistory(); }
+  function renderHistory() {
+    const h = loadHistory(); const card = $('#historyCard'); const wrap = $('#historyList');
+    if (!h.length) { card.hidden = true; return; }
+    card.hidden = false;
+    wrap.innerHTML = h.map(item => {
+      const d = new Date(item.timestamp);
+      const t = d.toLocaleString('ar-EG', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+      const parts = [];
+      if (item.auditMode) {
+        parts.push('🔍 تدقيق');
+        if (item.dictAdded) parts.push(`✓ ${item.dictAdded} تعديل`);
+        if (item.failed) parts.push(`${item.failed} فشل`);
+      } else {
+        if (item.sentNew) parts.push(`+${item.sentNew} جملة`);
+        if (item.sentDup) parts.push(`${item.sentDup} مكرر`);
+        if (item.dictNew) parts.push(`+${item.dictNew} كلمة`);
+        if (item.dictAdded) parts.push(`+${item.dictAdded} معنى`);
+        if (item.failed) parts.push(`${item.failed} فشل`);
+      }
+      return `<div class="history-item"><div class="history-item-icon">${item.auditMode ? '🔍' : '✓'}</div><div class="history-item-content"><div class="history-item-title">${parts.join(' · ')}</div><div class="history-item-time">${t}</div></div></div>`;
+    }).join('');
+  }
+
+  function renderDriveBankList() {
+    const wrap = $('#driveBankList');
+    const items = state.driveReviewBank;
+    if (!items.length) { wrap.innerHTML = '<div class="empty-state">📌 لا توجد جمل محفوظة</div>'; return; }
+    wrap.innerHTML = items.map((it, i) => `
+      <div class="preview-list-item" style="margin-bottom: 8px;">
+        <div class="preview-item-num">${i + 1}</div>
+        <div class="preview-item-body">
+          <div class="preview-item-it" dir="ltr">${escapeHtml(it.italian)}</div>
+          ${it.arabic ? `<div class="preview-item-ar">${escapeHtml(it.arabic)}</div>` : `<div class="preview-item-ar empty-ar">بدون ترجمة</div>`}
+          <div style="font-size: 10.5px; color: var(--text-soft); margin-top: 4px;">${new Date(it.saved_at).toLocaleString('ar-EG', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</div>
+        </div>
+        <button class="drive-action-btn undo" data-bank-del="${i}">🗑️</button>
+      </div>
+    `).join('');
+    wrap.querySelectorAll('[data-bank-del]').forEach(b => {
+      b.addEventListener('click', () => {
+        const idx = parseInt(b.dataset.bankDel, 10);
+        if (!confirm('حذف؟')) return;
+        state.driveReviewBank.splice(idx, 1);
+        saveDriveReviewBankList(state.driveReviewBank);
+        updateDriveBankUI();
+        renderDriveBankList();
+        toast('🗑️ تم الحذف', 'ok');
+      });
+    });
+  }
+  function openDriveBankModal() { renderDriveBankList(); $('#driveBankOverlay').classList.add('is-open'); document.body.style.overflow = 'hidden'; }
+  function closeDriveBankModal() { $('#driveBankOverlay').classList.remove('is-open'); document.body.style.overflow = ''; }
+  function clearDriveBank() {
+    if (!state.driveReviewBank.length) { toast('البنك فارغ', 'warn'); return; }
+    if (!confirm(`حذف ${state.driveReviewBank.length} جملة؟`)) return;
+    state.driveReviewBank = [];
+    saveDriveReviewBankList(state.driveReviewBank);
+    updateDriveBankUI();
+    renderDriveBankList();
+    toast('🗑️ تم المسح', 'ok');
+  }
+  function restoreDriveBankToEditor() {
+    if (!state.driveReviewBank.length) { toast('البنك فارغ', 'warn'); return; }
+    const sentences = state.driveReviewBank.map(it => ({ italian: it.italian, arabic: it.arabic || '' }));
+    $('#driveInput').value = JSON.stringify({ sentences }, null, 2);
+    previewDriveInput();
+    closeDriveBankModal();
+    toast(`📥 استعادة ${sentences.length} جملة`, 'ok');
+  }
+
+  async function copyPromptText(text, btnEl, successMsg, modalTitle) {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast(successMsg, 'ok');
+      if (btnEl) {
+        btnEl.classList.add('copied');
+        const old = btnEl.innerHTML;
+        btnEl.innerHTML = '✅ <span class="btn-text-long">تم النسخ</span>';
+        setTimeout(() => { btnEl.classList.remove('copied'); btnEl.innerHTML = old; }, 2000);
+      }
+    } catch (_) {
+      state.modalPromptText = text;
+      state.modalPromptTitle = modalTitle || '📝 برومبت';
+      $('#promptModalTitle').textContent = state.modalPromptTitle;
+      $('#promptContent').textContent = text;
+      $('#promptOverlay').classList.add('is-open');
+      toast('انسخ يدويًا', 'warn');
+    }
+  }
+  function copyPrompt() { copyPromptText(AI_PROMPT, $('#btnCopyPrompt'), 'تم نسخ برومبت الجمل ✓', '📝 برومبت الجمل'); }
+  function copyDrivePrompt() { copyPromptText(DRIVE_PROMPT, $('#btnCopyDrivePrompt'), 'تم نسخ برومبت ملف Drive ✓', '📄 برومبت ملف Drive'); }
+  function closePromptModal() { $('#promptOverlay').classList.remove('is-open'); }
+  async function copyFromModal() {
+    const text = state.modalPromptText || AI_PROMPT;
+    try { await navigator.clipboard.writeText(text); toast('تم النسخ ✓', 'ok'); closePromptModal(); }
+    catch { const r = document.createRange(); r.selectNodeContents($('#promptContent')); const s = window.getSelection(); s.removeAllRanges(); s.addRange(r); toast('حدد وانسخ يدويًا', 'warn'); }
+  }
+
+  function openVerbPromptModal() {
+    state.verbPromptOptions = { riflessivo: false, passato: false, futuro: false };
+    $('#chkRiflessivo').checked = false;
+    $('#chkPassato').checked = false;
+    $('#chkFuturo').checked = false;
+    updateTenseCheckboxStyles();
+    updateVerbPromptPreview();
+    $('#verbPromptOverlay').classList.add('is-open');
+  }
+  function closeVerbPromptModal() { $('#verbPromptOverlay').classList.remove('is-open'); }
+  function updateTenseCheckboxStyles() {
+    $$('.tense-checkbox').forEach(el => { const input = el.querySelector('input[type="checkbox"]'); el.classList.toggle('checked', input.checked); });
+  }
+  function updateVerbPromptPreview() {
+    state.verbPromptOptions = { riflessivo: $('#chkRiflessivo').checked, passato: $('#chkPassato').checked, futuro: $('#chkFuturo').checked };
+    $('#verbPromptPreview').textContent = buildVerbPrompt(state.verbPromptOptions);
+  }
+  async function copyVerbPromptFromModal() {
+    const prompt = buildVerbPrompt(state.verbPromptOptions);
+    try {
+      await navigator.clipboard.writeText(prompt);
+      toast('تم نسخ برومبت الأفعال ✓', 'ok');
+      closeVerbPromptModal();
+      const b = $('#btnCopyVerbPrompt');
+      b.classList.add('copied');
+      const old = b.innerHTML;
+      b.innerHTML = '✅ <span class="btn-text-long">تم النسخ</span>';
+      setTimeout(() => { b.classList.remove('copied'); b.innerHTML = old; }, 2000);
+    } catch (_) {
+      const el = $('#verbPromptPreview');
+      const range = document.createRange(); range.selectNodeContents(el);
+      const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+      toast('حدد النص وانسخه يدويًا', 'warn');
+    }
+  }
+
+  function loadSample() {
+    $('#jsonInput').value = `{
+  "sentences": [
+    { "italian": "Io mangio una mela ogni mattina", "arabic": "أنا آكل تفاحة كل صباح" }
+  ],
+  "dictionary": [
+    { "word": "mangio", "lemma": "mangiare", "type": "verb", "meaning": "آكل", "summary": "المضارع: io mangio, tu mangi, lui/lei mangia, noi mangiamo, voi mangiate, loro mangiano" }
+  ]
+}`;
+    previewInput();
+    toast('تم تحميل المثال', 'ok');
+  }
+  function clearInput() { $('#jsonInput').value = ''; state.pendingPreview = null; previewInput(); toast('تم المسح'); }
+  function clearVerbAiInput() { $('#verbAiInput').value = ''; previewVerbAIInput(); toast('تم المسح'); }
+
+  function bindEvents() {
+    $$('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        $$('.tab-btn').forEach(b => b.classList.toggle('active', b === btn));
+        $('#tab-json').hidden = btn.dataset.tab !== 'json';
+        $('#tab-verbs').hidden = btn.dataset.tab !== 'verbs';
+        $('#tab-drive').hidden = btn.dataset.tab !== 'drive';
+        if (btn.dataset.tab === 'verbs') loadVerbs();
+      });
+    });
+
+    $('#btnCopyPrompt').addEventListener('click', copyPrompt);
+    $('#btnCopyVerbPrompt').addEventListener('click', openVerbPromptModal);
+    $('#btnCopyDrivePrompt').addEventListener('click', copyDrivePrompt);
+
+    $('#btnCloseVerbPrompt').addEventListener('click', closeVerbPromptModal);
+    $('#btnCloseVerbPromptBottom').addEventListener('click', closeVerbPromptModal);
+    $('#verbPromptOverlay').addEventListener('click', e => { if (e.target === $('#verbPromptOverlay')) closeVerbPromptModal(); });
+    $('#btnCopyVerbFromModal').addEventListener('click', copyVerbPromptFromModal);
+
+    ['chkRiflessivo', 'chkPassato', 'chkFuturo'].forEach(id => {
+      document.getElementById(id).addEventListener('change', () => { updateTenseCheckboxStyles(); updateVerbPromptPreview(); });
+    });
+
+    $('#btnAnalyze').addEventListener('click', analyze);
+    $('#btnConfirmUpload').addEventListener('click', commitUpload);
+    $('#btnSample').addEventListener('click', loadSample);
+    $('#btnClear').addEventListener('click', clearInput);
+    $('#jsonInput').addEventListener('input', previewInput);
+
+    $('#verbAiInput').addEventListener('input', previewVerbAIInput);
+    $('#btnAnalyzeVerbAI').addEventListener('click', analyzeVerbAI);
+    $('#btnVerbAiClear').addEventListener('click', clearVerbAiInput);
+    $('#verbAiInput').addEventListener('keydown', e => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); if (!$('#btnAnalyzeVerbAI').disabled) analyzeVerbAI(); }
+    });
+
+    $('#driveInput').addEventListener('input', previewDriveInput);
+    $('#btnAnalyzeDrive').addEventListener('click', analyzeDrive);
+    $('#btnDriveClear').addEventListener('click', clearDriveInput);
+    $('#driveInput').addEventListener('keydown', e => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); if (!$('#btnAnalyzeDrive').disabled) analyzeDrive(); }
+    });
+
+    $('#btnOpenDriveBank').addEventListener('click', openDriveBankModal);
+    $('#btnCloseDriveBank').addEventListener('click', closeDriveBankModal);
+    $('#btnClearDriveBank').addEventListener('click', clearDriveBank);
+    $('#btnRestoreDriveBank').addEventListener('click', restoreDriveBankToEditor);
+    $('#driveBankOverlay').addEventListener('click', e => { if (e.target === $('#driveBankOverlay')) closeDriveBankModal(); });
+
+    $('#verbHasReflexive').addEventListener('change', e => { $('#verbReflexiveSection').hidden = !e.target.checked; });
+    $('#btnSaveVerb').addEventListener('click', saveVerb);
+    $('#btnResetVerb').addEventListener('click', resetVerbForm);
+
+    $('#btnClosePreview').addEventListener('click', closePreviewModal);
+    $('#btnClosePreviewBottom').addEventListener('click', closePreviewModal);
+    $('#previewOverlay').addEventListener('click', e => { if (e.target === $('#previewOverlay')) closePreviewModal(); });
+    $$('.preview-tab-btn').forEach(b => b.addEventListener('click', () => switchPreviewTab(b.dataset.tab)));
+
+    $('#btnClosePrompt').addEventListener('click', closePromptModal);
+    $('#btnCloseModal').addEventListener('click', closePromptModal);
+    $('#btnCopyFromModal').addEventListener('click', copyFromModal);
+    $('#promptOverlay').addEventListener('click', e => { if (e.target === $('#promptOverlay')) closePromptModal(); });
+
+    $('#jsonInput').addEventListener('keydown', e => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); if (!$('#btnAnalyze').disabled) analyze(); }
+    });
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') {
+        if ($('#previewOverlay').classList.contains('is-open')) closePreviewModal();
+        else if ($('#driveBankOverlay').classList.contains('is-open')) closeDriveBankModal();
+        else if ($('#promptOverlay').classList.contains('is-open')) closePromptModal();
+        else if ($('#verbPromptOverlay').classList.contains('is-open')) closeVerbPromptModal();
+      }
+    });
+  }
+
+  async function boot() {
+    state.driveReviewBank = loadDriveReviewBank();
+    updateDriveBankUI();
+    bindEvents();
+    renderHistory();
+    await initFirebase();
+    previewInput();
+    previewVerbAIInput();
+    previewDriveInput();
+    console.info('[Ingester — Friend Edition] Boot. USER_ID =', USER_ID, '| Project: a222-912ce');
+  }
+  document.addEventListener('DOMContentLoaded', boot);
+})();
+</script>
+</body>
+</html>
